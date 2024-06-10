@@ -1,5 +1,6 @@
 from typing import Dict
 
+import time
 import numpy as np
 
 from gello.robots.robot import Robot
@@ -15,16 +16,8 @@ class URRobot(Robot):
     """A class representing a UR robot."""
 
     def __init__(self, robot_ip: str = "192.168.1.10", no_gripper: bool = False):
-        
-        if not no_gripper:
-            from gello.robots.robotiq_gripper import RobotiqGripper
 
-            self.gripper = RobotiqGripper()
-            self.gripper.connect(device="/tmp/ttyUR")
-            print("gripper connected")
-            # gripper.activate()
-
-        [print("connect") for _ in range(4)]
+        print("ur_ros starting")
 
         self._free_drive = False
         self.robot.endFreedriveMode()
@@ -44,6 +37,7 @@ class URRobot(Robot):
         self._joint_state = None
 
     def _joint_state_sub_callback(self, message):
+        """Save joint state received from _joint_state_subscriber"""
         self._joint_state = message
 
     def num_dofs(self) -> int:
@@ -57,10 +51,9 @@ class URRobot(Robot):
         return 6
 
     def _get_gripper_pos(self) -> float:
-        import time
 
         time.sleep(0.01)
-        gripper_pos = self.gripper.get_current_position()
+        gripper_pos = self._joint_state[-1]
         assert 0 <= gripper_pos <= 255, "Gripper position must be between 0 and 255"
         return gripper_pos / 255
 
@@ -70,12 +63,8 @@ class URRobot(Robot):
         Returns:
             T: The current state of the leader robot.
         """
-        robot_joints = [x for x in self._joint_state] # copy to prevent list mutation 
-        if self._use_gripper:
-            gripper_pos = self._get_gripper_pos()
-            pos = np.append(robot_joints, gripper_pos)
-        else:
-            pos = robot_joints
+        robot_joints = [x for x in self._joint_state] # copy to prevent list mutation
+        pos = robot_joints
         return pos
 
     def command_joint_state(self, joint_state: np.ndarray) -> None:
@@ -88,10 +77,6 @@ class URRobot(Robot):
         robot_joints_msg = std_msgs.msg.Float64MultiArray()
         robot_joints_msg.data = robot_joints
         self._joint_pos_publisher.publish(robot_joints_msg)
-        
-        if self._use_gripper:
-            gripper_pos = joint_state[-1] * 255
-            self.gripper.move(gripper_pos, 255, 10)
 
     def freedrive_enabled(self) -> bool:
         """Check if the robot is in freedrive mode.
@@ -109,10 +94,10 @@ class URRobot(Robot):
         """
         if enable and not self._free_drive:
             self._free_drive = True
-            self.robot.freedriveMode()
+            # self.robot.freedriveMode()
         elif not enable and self._free_drive:
             self._free_drive = False
-            self.robot.endFreedriveMode()
+            # self.robot.endFreedriveMode()
 
     def get_observations(self) -> Dict[str, np.ndarray]:
         joints = self.get_joint_state()
