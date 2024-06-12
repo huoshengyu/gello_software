@@ -11,6 +11,14 @@ import sensor_msgs.msg
 import trajectory_msgs.msg
 import std_msgs.msg
 
+# from robotiq_2f_gripper_control.msg import Robotiq2FGripper_robot_output
+class Robotiq2FGripper_robot_output():
+    rACT=0
+    rGTO=0
+    rATR=0
+    rPR=0
+    rSP=0
+    rFR=0
 
 class URRobot(Robot):
     """A class representing a UR robot."""
@@ -29,10 +37,12 @@ class URRobot(Robot):
         joint_state_topic = "/joint_states"
         # joint_traj_topic = "/pos_joint_traj_controller/command"
         joint_pos_topic = "/joint_group_pos_controller/command"
+        gripper_topic = "/robotiq_2f_85_gripper/control"
 
         self._joint_state_subscriber = rospy.Subscriber(joint_state_topic, sensor_msgs.msg.JointState, self._joint_state_sub_callback)
         # self._joint_traj_publisher = rospy.Publisher(joint_traj_topic, trajectory_msgs.msg.JointTrajectory, queue_size=1)
         self._joint_pos_publisher = rospy.Publisher(joint_pos_topic, std_msgs.msg.Float64MultiArray, queue_size=1)
+        self._gripper_publisher = rospy.Publisher(gripper_topic, Robotiq2FGripper_robot_output, queue_size=1)
 
         self._joint_state = None
 
@@ -74,10 +84,24 @@ class URRobot(Robot):
         Args:
             joint_state (np.ndarray): The state to command the leader robot to.
         """
+        # Joint commands
         robot_joints = joint_state[:6]
         robot_joints_msg = std_msgs.msg.Float64MultiArray()
         robot_joints_msg.data = robot_joints
         self._joint_pos_publisher.publish(robot_joints_msg)
+        
+        # Gripper commands
+        if len(joint_state) >= 7:
+            command = Robotiq2FGripper_robot_output()
+            command.rACT = 0x1
+            command.rGTO = 0x1 # go to position
+            command.rATR = 0x0 # No emergency release
+            command.rSP = 128 # speed
+            command.rPR = joint_state[-1] # position
+            command.rPR = min(command.rPR, 230)
+            command.rPR = max(command.rPR, 0)
+            command.rFR = 30 # effort
+            self._gripper_publisher.publish(command)
 
     def freedrive_enabled(self) -> bool:
         """Check if the robot is in freedrive mode.
