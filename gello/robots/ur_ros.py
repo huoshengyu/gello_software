@@ -20,7 +20,7 @@ class URRobot(Robot):
         print("ur_ros starting")
 
         self._free_drive = False
-        self.robot.endFreedriveMode()
+        # self.robot.endFreedriveMode()
         self._use_gripper = not no_gripper
 
         # ROS compatibility edits
@@ -63,9 +63,9 @@ class URRobot(Robot):
         Returns:
             T: The current state of the leader robot.
         """
-        robot_joints = [x for x in self._joint_state.position] # copy to prevent list mutation
+        robot_joints = np.array([x for x in self._joint_state.position]) # copy to prevent list mutation
         ros_joint_indices = [3, 2, 0, 4, 5, 6, 1] # order in which joint_states message must be indexed to sort joints from base to gripper
-        pos = [robot_joints[i] for i in ros_joint_indices] # rearrange joints to be in order from base to gripper
+        pos = np.array([robot_joints[i] for i in ros_joint_indices]) # rearrange joints to be in order from base to gripper
         return pos
 
     def command_joint_state(self, joint_state: np.ndarray) -> None:
