@@ -8,7 +8,7 @@ from gello.robots.robot import Robot
 class URRobot(Robot):
     """A class representing a UR robot."""
 
-    def __init__(self, robot_ip: str = "192.168.1.10", no_gripper: bool = False):
+    def __init__(self, robot_ip: str = "192.168.1.10", no_gripper: bool = False, gripper_type: str = "robotiq"):
         import rtde_control
         import rtde_receive
 
@@ -24,11 +24,20 @@ class URRobot(Robot):
 
         self.r_inter = rtde_receive.RTDEReceiveInterface(robot_ip)
         if not no_gripper:
-            from gello.robots.robotiq_gripper import RobotiqGripper
+            if gripper_type == "robotiq":
+                from gello.robots.robotiq_gripper import RobotiqGripper
 
-            self.gripper = RobotiqGripper()
-            self.gripper.connect(device="/tmp/ttyUR")
-            print("gripper connected")
+                self.gripper = RobotiqGripper()
+                self.gripper.connect(device="/tmp/ttyUR")
+                print("gripper connected")
+            elif gripper_type == "onrobot":
+                from gello.robots.onrobot_gripper import OnRobotRG2FT
+
+                ip = "192.168.1.1"
+                port = "502"
+                self.gripper = OnRobotRG2FT(ip, port)
+                print("gripper connected")
+
             # gripper.activate()
 
         [print("connect") for _ in range(4)]
@@ -126,7 +135,8 @@ class URRobot(Robot):
 
 def main():
     robot_ip = "192.168.1.11"
-    ur = URRobot(robot_ip, no_gripper=True)
+    gripper_type = "onrobot"
+    ur = URRobot(robot_ip, no_gripper=True, gripper_type=gripper_type)
     print(ur)
     ur.set_freedrive_mode(True)
     print(ur.get_observations())
