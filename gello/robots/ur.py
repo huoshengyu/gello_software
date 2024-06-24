@@ -3,39 +3,38 @@ from typing import Dict
 import numpy as np
 
 from gello.robots.robot import Robot
+from gello.robots.robotiq_gripper import RobotiqGripper
+from gello.robots.onrobot_gripper_ros import OnRobotRG2FTROS
 
 
 class URRobot(Robot):
     """A class representing a UR robot."""
 
-    def __init__(self, robot_ip: str = "192.168.1.10", no_gripper: bool = False, gripper_type: str = "robotiq"):
+    def __init__(self, robot_ip: str = "192.168.1.102", no_gripper: bool = False, gripper_type: str = "robotiq"):
         import rtde_control
         import rtde_receive
 
         [print("in ur robot") for _ in range(4)]
-        try:
-            self.robot = rtde_control.RTDEControlInterface(robot_ip)
-
-
-
-        except Exception as e:
-            print(e)
-            print(robot_ip)
+        self.robot = None
+        while not self.robot:
+            try:
+                self.robot = rtde_control.RTDEControlInterface(robot_ip)
+            except Exception as e:
+                print(e)
+                print(robot_ip)
 
         self.r_inter = rtde_receive.RTDEReceiveInterface(robot_ip)
         if not no_gripper:
             if gripper_type == "robotiq":
-                from gello.robots.robotiq_gripper import RobotiqGripper
 
                 self.gripper = RobotiqGripper()
                 self.gripper.connect(device="/tmp/ttyUR")
                 print("gripper connected")
             elif gripper_type == "onrobot":
-                from gello.robots.onrobot_gripper import OnRobotRG2FT
 
-                ip = "192.168.1.1"
-                port = "502"
-                self.gripper = OnRobotRG2FT(ip, port)
+                onrobot_ip = "192.168.1.1"
+                onrobot_port = "502"
+                self.gripper = OnRobotRG2FTROS()
                 print("gripper connected")
 
             # gripper.activate()
@@ -43,7 +42,7 @@ class URRobot(Robot):
         [print("connect") for _ in range(4)]
 
         self._free_drive = False
-        self.robot.endFreedriveMode()
+        # self.robot.endFreedriveMode()
         self._use_gripper = not no_gripper
 
     def num_dofs(self) -> int:
@@ -76,7 +75,7 @@ class URRobot(Robot):
             pos = np.append(robot_joints, gripper_pos)
         else:
             pos = robot_joints
-        return pos
+        return np.array(pos)
 
     def command_joint_state(self, joint_state: np.ndarray) -> None:
         """Command the leader robot to a given state.
@@ -97,7 +96,9 @@ class URRobot(Robot):
         )
         if self._use_gripper:
             gripper_pos = joint_state[-1] * 255
-            self.gripper.move(gripper_pos, 255, 10)
+            gripper_speed = 255
+            gripper_force = 10
+            self.gripper.move(gripper_pos, gripper_speed, gripper_force)
         self.robot.waitPeriod(t_start)
 
     def freedrive_enabled(self) -> bool:
@@ -134,7 +135,7 @@ class URRobot(Robot):
 
 
 def main():
-    robot_ip = "192.168.1.11"
+    robot_ip = "192.168.1.102"
     gripper_type = "onrobot"
     ur = URRobot(robot_ip, no_gripper=True, gripper_type=gripper_type)
     print(ur)

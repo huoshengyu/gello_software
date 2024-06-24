@@ -9,7 +9,10 @@ import time
 from enum import Enum
 from typing import OrderedDict, Tuple, Union
 
-from pymodbus.client.sync import ModbusSerialClient
+try:
+	from pymodbus.client.sync import ModbusSerialClient
+except:
+	from pymodbus.client import ModbusSerialClient
 from math import ceil
 
 

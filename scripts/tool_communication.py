@@ -24,9 +24,9 @@ import subprocess
 def main():
     """Starts socat"""
     # IP address of the robot
-    robot_ip = "192.168.1.102"
+    robot_ip = "192.168.1.1"
     # Port on which the remote pc (robot) publishes the interface
-    tcp_port = "54321"
+    tcp_port = "502"
 
     # By default, socat will create a pty in /dev/pts/N with n being an increasing number.
     # Additionally, a symlink at the given location will be created. Use an absolute path here.

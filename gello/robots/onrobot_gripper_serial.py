@@ -12,9 +12,9 @@ import struct
 from enum import Enum
 from typing import OrderedDict, Tuple, Union
 try:
-	from pymodbus.client.sync import ModbusTcpClient
+	from pymodbus.client.sync import ModbusSerialClient
 except:
-	from pymodbus.client import ModbusTcpClient
+	from pymodbus.client import ModbusSerialClient
 
 RG2FT_MIN_WIDTH = 1
 RG2FT_MAX_WIDTH = 100
@@ -56,7 +56,7 @@ class RG2FTState():
     GripperBusy = 0 # High (1) when a motion is ongoing, low (0) when not. The gripper will only accept new commands when this flag is low.
     GripDetected = 0 # High (1) when an internal or external grip is detected.
 
-class OnRobotTcpClient:
+class OnRobotSerialClient:
     """ communication sends commands and receives the status of RG gripper.
 
         Attributes:
@@ -75,7 +75,7 @@ class OnRobotTcpClient:
         self.client = None
         self.lock = threading.Lock()
 
-    def connect(self, ip, port, changer_addr=65):
+    def connect(self, device, changer_addr=65):
         """ Connects to the client device (gripper).
 
             Args:
@@ -83,18 +83,11 @@ class OnRobotTcpClient:
                 port (str): port number (e.g. '502')
                 changer_addr (int): quick tool changer address
         """
-
-        self.client = ModbusTcpClient(
-            host=ip,
-            port=port,
-            stopbits=1,
-            bytesize=8,
-            parity='E',
-            baudrate=115200,
-            timeout=1,
-            strict=False)
+        self.client = ModbusSerialClient(method='rtu',port=device,stopbits=1, bytesize=8, baudrate=115200, timeout=0.2)
+        if not self.client.connect():
+            print("Unable to connect to {}".format(device))
+            return False
         self.changer_addr = changer_addr
-        self.client.connect()
 
     def disconnect(self):
         """ Closes connection. """
@@ -145,9 +138,9 @@ class OnRobotTcpClient:
 
 class OnRobotRG2FT:
 
-    def __init__(self, ip, port):
-        self.client = OnRobotTcpClient()
-        self.client.connect(ip, port, RG2FT_DEVICE_ADDRESS)
+    def __init__(self, device):
+        self.client = OnRobotSerialClient()
+        self.client.connect(device, RG2FT_DEVICE_ADDRESS)
         time.sleep(1)
 
     def verifyCommand(self, cmd):

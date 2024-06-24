@@ -23,7 +23,7 @@ class Robotiq2FGripper_robot_output():
 class URRobot(Robot):
     """A class representing a UR robot."""
 
-    def __init__(self, robot_ip: str = "192.168.1.10", no_gripper: bool = False):
+    def __init__(self, robot_ip: str = "192.168.1.102", no_gripper: bool = False):
 
         print("ur_ros starting")
 
