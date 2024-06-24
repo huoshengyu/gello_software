@@ -31,7 +31,7 @@ class Args:
     wrist_camera_port: int = 5000
     base_camera_port: int = 5001
     hostname: str = "127.0.0.1"
-    robot_type: str = None  # only needed for quest agent or spacemouse agent
+    robot_type: str = ""  # only needed for quest agent or spacemouse agent
     hz: int = 100
     start_joints: Optional[Tuple[float, ...]] = None
 
@@ -150,8 +150,9 @@ def main(args):
     start_pos = agent.act(env.get_obs())
     obs = env.get_obs()
     joints = obs["joint_positions"]
+    start_pos = start_pos[0:len(joints)]
 
-    abs_deltas = np.abs(start_pos - joints)
+    abs_deltas = np.abs(start_pos[0:len(joints)] - joints)
     id_max_joint_delta = np.argmax(abs_deltas)
 
     max_joint_delta = 0.8
@@ -180,6 +181,7 @@ def main(args):
         obs = env.get_obs()
         command_joints = agent.act(obs)
         current_joints = obs["joint_positions"]
+        command_joints = command_joints[0:len(current_joints)]
         delta = command_joints - current_joints
         max_joint_delta = np.abs(delta).max()
         if max_joint_delta > max_delta:
@@ -189,6 +191,7 @@ def main(args):
     obs = env.get_obs()
     joints = obs["joint_positions"]
     action = agent.act(obs)
+    action = action[0:len(joints)]
     if (action - joints > 0.5).any():
         print("Action is too big")
 
@@ -220,6 +223,7 @@ def main(args):
             flush=True,
         )
         action = agent.act(obs)
+        action = action[0:len(joints)]
         dt = datetime.datetime.now()
         if args.use_save_interface:
             state = kb_interface.update()
