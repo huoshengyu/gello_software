@@ -114,6 +114,7 @@ class URRobot(Robot):
                 command.TargetForce = int(200) # force (N/10, 0 - 400)
                 command.TargetWidth = max(0, min(1000, joint_state[-1] * 4)) # position (mm/10, 0 - 1000)
                 command.Control = 0x0001
+                self._onrobot_gripper_publisher.publish(command)
             else:
                 print("Invalid gripper type specified!")
 

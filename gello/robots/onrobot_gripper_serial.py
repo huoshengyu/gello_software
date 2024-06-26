@@ -17,9 +17,9 @@ except:
 	from pymodbus.client import ModbusSerialClient
 
 RG2FT_MIN_WIDTH = 1
-RG2FT_MAX_WIDTH = 100
+RG2FT_MAX_WIDTH = 1000
 RG2FT_MIN_FORCE = 0
-RG2FT_MAX_FORCE = 40
+RG2FT_MAX_FORCE = 400
 RG2FT_DEVICE_ADDRESS = 65
 
 def s16(val):

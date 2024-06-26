@@ -81,7 +81,7 @@ class OnRobotRG2FTROS:
         the actual position that was requested, after being adjusted to the min/max calibrated range.
         """
         cmd = RG2FTCommand()
-        cmd.TargetForce = int(force*20)
+        cmd.TargetForce = int(force*10)
         cmd.TargetWidth = int((255 - position)*3)
         cmd.Control = 0x0001
         
