@@ -4,6 +4,9 @@ import time
 import numpy as np
 
 from gello.robots.robot import Robot
+# Note: Importing onrobot gripper messages is designed to 
+# work when GELLO is used as a submodule of Morpheus
+from onrobot_rg2ft_msgs.msg import RG2FTCommand, RG2FTState
 
 # ROS compatibility edits
 import rospy
@@ -23,13 +26,14 @@ class Robotiq2FGripper_robot_output():
 class URRobot(Robot):
     """A class representing a UR robot."""
 
-    def __init__(self, robot_ip: str = "192.168.1.102", no_gripper: bool = False):
+    def __init__(self, robot_ip: str = "192.168.1.102", no_gripper: bool = False, gripper_type: str = "onrobot"):
 
         print("ur_ros starting")
 
         self._free_drive = False
         # self.robot.endFreedriveMode()
         self._use_gripper = not no_gripper
+        self._gripper_type = gripper_type
 
         # ROS compatibility edits
         rospy.init_node('gello_ros_control')
@@ -37,12 +41,14 @@ class URRobot(Robot):
         joint_state_topic = "/joint_states"
         # joint_traj_topic = "/pos_joint_traj_controller/command"
         joint_pos_topic = "/joint_group_pos_controller/command"
-        gripper_topic = "/robotiq_2f_85_gripper/control"
+        robotiq_gripper_topic = "/robotiq_2f_85_gripper/control"
+        onrobot_gripper_topic = "/onrobot_rg2ft_gripper/command"
 
         self._joint_state_subscriber = rospy.Subscriber(joint_state_topic, sensor_msgs.msg.JointState, self._joint_state_sub_callback)
         # self._joint_traj_publisher = rospy.Publisher(joint_traj_topic, trajectory_msgs.msg.JointTrajectory, queue_size=1)
         self._joint_pos_publisher = rospy.Publisher(joint_pos_topic, std_msgs.msg.Float64MultiArray, queue_size=1)
-        self._gripper_publisher = rospy.Publisher(gripper_topic, Robotiq2FGripper_robot_output, queue_size=1)
+        self._robotiq_gripper_publisher = rospy.Publisher(robotiq_gripper_topic, Robotiq2FGripper_robot_output, queue_size=1)
+        self._onrobot_gripper_publisher = rospy.Publisher(onrobot_gripper_topic, Robotiq2FGripper_robot_output, queue_size=1)
 
         self._joint_state = None
 
@@ -91,17 +97,25 @@ class URRobot(Robot):
         self._joint_pos_publisher.publish(robot_joints_msg)
         
         # Gripper commands
-        if len(joint_state) >= 7:
-            command = Robotiq2FGripper_robot_output()
-            command.rACT = 0x1
-            command.rGTO = 0x1 # go to position
-            command.rATR = 0x0 # No emergency release
-            command.rSP = 128 # speed
-            command.rPR = joint_state[-1] # position
-            command.rPR = min(command.rPR, 230)
-            command.rPR = max(command.rPR, 0)
-            command.rFR = 30 # effort
-            self._gripper_publisher.publish(command)
+        if self._use_gripper:
+            if self._gripper_type == "robotiq":
+                command = Robotiq2FGripper_robot_output()
+                command.rACT = 0x1
+                command.rGTO = 0x1 # go to position
+                command.rATR = 0x0 # No emergency release
+                command.rSP = 128 # speed
+                command.rPR = joint_state[-1] # position (arbitrary, 0 - 255)
+                command.rPR = min(command.rPR, 230)
+                command.rPR = max(command.rPR, 0)
+                command.rFR = 20 # force (N)
+                self._robotiq_gripper_publisher.publish(command)
+            elif self._gripper_type == "onrobot":
+                command = RG2FTCommand()
+                command.TargetForce = int(200) # force (N/10, 0 - 400)
+                command.TargetWidth = max(0, min(1000, joint_state[-1] * 4)) # position (mm/10, 0 - 1000)
+                command.Control = 0x0001
+            else:
+                print("Invalid gripper type specified!")
 
     def freedrive_enabled(self) -> bool:
         """Check if the robot is in freedrive mode.

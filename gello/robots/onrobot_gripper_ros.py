@@ -11,6 +11,8 @@ import rospy
 import struct
 from enum import Enum
 from typing import OrderedDict, Tuple, Union
+# Note: Importing onrobot gripper messages is designed to 
+# work when GELLO is used as a submodule of Morpheus
 from onrobot_rg2ft_msgs.msg import RG2FTCommand, RG2FTState
 from geometry_msgs.msg import Wrench
 
