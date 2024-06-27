@@ -7,21 +7,13 @@ from gello.robots.robot import Robot
 # Note: Importing onrobot gripper messages is designed to 
 # work when GELLO is used as a submodule of Morpheus
 from onrobot_rg2ft_msgs.msg import RG2FTCommand, RG2FTState
+from robotiq_2f_gripper_control.msg import Robotiq2FGripper_robot_output, Robotiq2FGripper_robot_input
 
 # ROS compatibility edits
 import rospy
 import sensor_msgs.msg
 import trajectory_msgs.msg
 import std_msgs.msg
-
-# from robotiq_2f_gripper_control.msg import Robotiq2FGripper_robot_output
-class Robotiq2FGripper_robot_output():
-    rACT=0
-    rGTO=0
-    rATR=0
-    rPR=0
-    rSP=0
-    rFR=0
 
 class URRobot(Robot):
     """A class representing a UR robot."""
@@ -48,7 +40,7 @@ class URRobot(Robot):
         # self._joint_traj_publisher = rospy.Publisher(joint_traj_topic, trajectory_msgs.msg.JointTrajectory, queue_size=1)
         self._joint_pos_publisher = rospy.Publisher(joint_pos_topic, std_msgs.msg.Float64MultiArray, queue_size=1)
         self._robotiq_gripper_publisher = rospy.Publisher(robotiq_gripper_topic, Robotiq2FGripper_robot_output, queue_size=1)
-        self._onrobot_gripper_publisher = rospy.Publisher(onrobot_gripper_topic, Robotiq2FGripper_robot_output, queue_size=1)
+        self._onrobot_gripper_publisher = rospy.Publisher(onrobot_gripper_topic, RG2FTCommand, queue_size=1)
 
         self._joint_state = None
 

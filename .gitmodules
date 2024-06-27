@@ -4,6 +4,3 @@
 [submodule "third_party/DynamixelSDK"]
 	path = third_party/DynamixelSDK
 	url = https://github.com/ROBOTIS-GIT/DynamixelSDK.git
-[submodule "third_party/OnRobot_RG2FT_ROS"]
-	path = third_party/OnRobot_RG2FT_ROS
-	url = https://github.com/ian-chuang/OnRobot-RG2FT-ROS.git
