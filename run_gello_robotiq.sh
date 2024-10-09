@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Please place GELLO in the start position before running this script
+
 # Allow the node to communicate with the Robotiq gripper
 gnome-terminal -- bash -c "python scripts/tool_communication.py"
 
