@@ -1,5 +1,5 @@
-# GELLO
-This is the central repo that holds the all the software for GELLO. See the website for the paper and other resources for GELLO https://wuphilipp.github.io/gello_site/
+# GELLO: Morpheus Branch
+This is a branch of the GELLO robot arm controller, modified for the Morpheus haptic feedback project at UC Davis's HRVIP. See the original website for the paper and other resources for GELLO https://wuphilipp.github.io/gello_site/
 See the GELLO hardware repo for the STL files and hardware instructions for building your own GELLO https://github.com/wuphilipp/gello_mechanical
 ```
 git clone https://github.com/wuphilipp/gello_software.git
@@ -118,6 +118,27 @@ python experiments/run_env.py --agent=gello
 
 Ideally you can start your GELLO near a known configuration each time. If this is possible, you can set the `--start-joint` flag with GELLO's known starting configuration. This also enables the robot to reset before you begin teleoperation.
 
+## Controlling the gripper
+This branch of GELLO contains separate scripts for running a UR5e robot arm with different gripper types.
+
+Robotiq:
+```
+# Allow the node to communicate with the Robotiq gripper
+python scripts/tool_communication.py
+# Launch all of the node
+python experiments/launch_nodes.py --robot=ur
+# Run the enviroment loop
+python experiments/run_env.py --agent=gello
+```
+
+OnRobot:
+```
+# Launch all of the node
+python experiments/launch_nodes.py --robot=ur_onrobot
+# Run the enviroment loop
+python experiments/run_env.py --agent=gello
+```
+
 ## Collect data
 We have provided a simple example for collecting data with gello.
 To save trajectories with the keyboard, add the following flag `--use-save-interface`
@@ -136,6 +157,13 @@ Due to the use of multiprocessing, sometimes python process are not killed prope
 python processes.
 ```
 ./kill_nodes.sh
+```
+
+This branch of GELLO must be used with Ian Chuang's unofficial OnRobot ROS driver, which can be found here: https://github.com/ian-chuang/OnRobot-RG2FT-ROS
+
+If a `Command 'python' not found` error is received, then Ubuntu needs to alias `python` as `python3`.
+```
+sudo apt-get install python-is-python3 -y
 ```
 
 ### Using a new robot!
