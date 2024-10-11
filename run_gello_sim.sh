@@ -13,13 +13,8 @@ function kill {
 }
 trap kill EXIT
 
-# Start the onrobot gripper action server
-roslaunch onrobot_rg2ft_action_server onrobot_rg2ft_action_server.launch &
-
-sleep 1 # Wait 1 seconds
-
 # Launch all of the node
-python3 ./experiments/launch_nodes.py --robot=ur_onrobot &
+python3 ./experiments/launch_nodes.py --robot=sim_ur &
 
 sleep 1 # Wait 1 second
 
