@@ -73,7 +73,7 @@ def launch_robot_server(args: Args):
         elif args.robot == "ur_ros":
             from gello.robots.ur_ros import URRobot
 
-            robot = URRobot(no_gripper=False)
+            robot = URRobot(no_gripper=False, gripper_type="onrobot")
         elif args.robot == "panda":
             from gello.robots.panda import PandaRobot
 

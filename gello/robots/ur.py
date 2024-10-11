@@ -5,12 +5,19 @@ import numpy as np
 from gello.robots.robot import Robot
 from gello.robots.robotiq_gripper import RobotiqGripper
 from gello.robots.onrobot_gripper_ros import OnRobotRG2FTROS
+from onrobot_rg2ft_msgs.msg import RG2FTCommand, RG2FTState
+from robotiq_2f_gripper_control.msg import Robotiq2FGripper_robot_output, Robotiq2FGripper_robot_input
 
+# ROS compatibility edits
+import rospy
+import sensor_msgs.msg
+import trajectory_msgs.msg
+import std_msgs.msg
 
 class URRobot(Robot):
     """A class representing a UR robot."""
 
-    def __init__(self, robot_ip: str = "192.168.1.102", no_gripper: bool = False, gripper_type: str = "robotiq"):
+    def __init__(self, robot_ip: str = "192.168.1.102", no_gripper: bool = False, gripper_type: str = "onrobot"):
         import rtde_control
         import rtde_receive
 
@@ -44,6 +51,18 @@ class URRobot(Robot):
         self._free_drive = False
         # self.robot.endFreedriveMode()
         self._use_gripper = not no_gripper
+        self._gripper_type = gripper_type
+
+        # ROS compatibility edits
+        #rospy.init_node('gello_ros_control')
+
+        # joint_traj_topic = "/pos_joint_traj_controller/command"
+        joint_pos_topic = "/joint_group_pos_controller/command"
+
+        # self._joint_traj_publisher = rospy.Publisher(joint_traj_topic, trajectory_msgs.msg.JointTrajectory, queue_size=1)
+        self._joint_pos_publisher = rospy.Publisher(joint_pos_topic, std_msgs.msg.Float64MultiArray, queue_size=1)
+
+        self._joint_state = None
 
     def num_dofs(self) -> int:
         """Get the number of joints of the robot.
@@ -83,7 +102,7 @@ class URRobot(Robot):
         Args:
             joint_state (np.ndarray): The state to command the leader robot to.
         """
-        velocity = 0.5
+        velocity = 0.25
         acceleration = 0.5
         dt = 1.0 / 500  # 2ms
         lookahead_time = 0.2
@@ -94,11 +113,38 @@ class URRobot(Robot):
         self.robot.servoJ(
             robot_joints, velocity, acceleration, dt, lookahead_time, gain
         )
+        robot_joints_msg = std_msgs.msg.Float64MultiArray()
+        robot_joints_msg.data = robot_joints
+        self._joint_pos_publisher.publish(robot_joints_msg)
+
         if self._use_gripper:
-            gripper_pos = joint_state[-1] * 255
-            gripper_speed = 255
-            gripper_force = 10
-            self.gripper.move(gripper_pos, gripper_speed, gripper_force)
+            if self._gripper_type == "robotiq":
+                command = Robotiq2FGripper_robot_output()
+                command.rACT = 0x1
+                command.rGTO = 0x1 # go to position
+                command.rATR = 0x0 # No emergency release
+                command.rSP = 128 # speed
+                command.rPR = joint_state[-1] # position (arbitrary, 0 - 255)
+                command.rPR = min(command.rPR, 230)
+                command.rPR = max(command.rPR, 0)
+                command.rFR = 20 # force (N)
+                gripper_pos = command.rPR
+                gripper_speed = command.rSP
+                gripper_force = command.rFR
+                self.gripper.move(gripper_pos, gripper_speed, gripper_force)
+            elif self._gripper_type == "onrobot":
+                command = RG2FTCommand()
+                command.TargetForce = int(200) # force (N/10, 0 - 400)
+                command.TargetWidth = max(0, min(1000, (1 - joint_state[-1]) * 1000)) # position (mm/10, 0 - 1000)
+                print(joint_state)
+                print(command.TargetWidth)
+                command.Control = 0x0001
+                gripper_pos = command.TargetWidth
+                gripper_speed = 0
+                gripper_force = command.TargetForce
+                self.gripper.move(gripper_pos, gripper_speed, gripper_force)
+            else:
+                print("Invalid gripper type specified!")
         self.robot.waitPeriod(t_start)
 
     def freedrive_enabled(self) -> bool:

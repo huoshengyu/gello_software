@@ -28,11 +28,11 @@ class OnRobotRG2FTROS:
     def __init__(self):
         rospy.init_node('onrobot_rg2ft_gello', anonymous=True)
 
-        self.cmd_pub = rospy.Publisher('command', RG2FTCommand, queue_size=1)
+        self.cmd_pub = rospy.Publisher('/onrobot_rg2ft/command', RG2FTCommand, queue_size=1)
 
-        self.state_pub = rospy.Subscriber('state', RG2FTState, self.stateCallback)
-        self.left_wrench_pub = rospy.Subscriber('left_wrench', Wrench, self.leftWrenchCallback)
-        self.right_wrench_pub = rospy.Subscriber('right_wrench', Wrench, self.rightWrenchCallback)
+        self.state_pub = rospy.Subscriber('/onrobot_rg2ft/state', RG2FTState, self.stateCallback)
+        self.left_wrench_pub = rospy.Subscriber('/onrobot_rg2ft/left_wrench', Wrench, self.leftWrenchCallback)
+        self.right_wrench_pub = rospy.Subscriber('/onrobot_rg2ft/right_wrench', Wrench, self.rightWrenchCallback)
 
         self.state = None
 
@@ -81,8 +81,8 @@ class OnRobotRG2FTROS:
         the actual position that was requested, after being adjusted to the min/max calibrated range.
         """
         cmd = RG2FTCommand()
-        cmd.TargetForce = int(force*10)
-        cmd.TargetWidth = int((255 - position)*3)
+        cmd.TargetForce = int(force)
+        cmd.TargetWidth = int(position)
         cmd.Control = 0x0001
         
         cmd = self.verifyCommand(cmd)
@@ -92,7 +92,7 @@ class OnRobotRG2FTROS:
         """Returns the current position as returned by the physical hardware."""
         # return self._get_var(self.POS)
         status = self.readState()
-        scaled = 255 - status.ActualGripperWidth//3
+        scaled = 255 - status.ActualGripperWidth * 255 // 1000
         clipped = max(min(scaled, 255), 0)
         return clipped
 

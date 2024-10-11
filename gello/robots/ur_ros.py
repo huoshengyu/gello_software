@@ -31,6 +31,7 @@ class URRobot(Robot):
         rospy.init_node('gello_ros_control')
 
         joint_state_topic = "/joint_states"
+        gripper_state_topic = "/onrobot_rg2ft_gripper/command"
         # joint_traj_topic = "/pos_joint_traj_controller/command"
         joint_pos_topic = "/joint_group_pos_controller/command"
         robotiq_gripper_topic = "/robotiq_2f_85_gripper/control"
@@ -46,7 +47,8 @@ class URRobot(Robot):
 
     def _joint_state_sub_callback(self, message):
         """Save joint state received from _joint_state_subscriber"""
-        self._joint_state = message
+        if message is not None and len(message.position) == self.num_dofs():
+            self._joint_state = message
 
     def num_dofs(self) -> int:
         """Get the number of joints of the robot.
@@ -54,7 +56,7 @@ class URRobot(Robot):
         Returns:
             int: The number of joints of the robot.
         """
-        if self._use_gripper:
+        if self._use_gripper and (self._gripper_type == "robotiq"):
             return 7
         return 6
 
@@ -71,8 +73,13 @@ class URRobot(Robot):
         Returns:
             T: The current state of the leader robot.
         """
+        while self._joint_state is None:
+            time.sleep(0.1)
         robot_joints = np.array([x for x in self._joint_state.position]) # copy to prevent list mutation
-        ros_joint_indices = [3, 2, 0, 4, 5, 6, 1] # order in which joint_states message must be indexed to sort joints from base to gripper
+        if len(robot_joints) == 7:
+            ros_joint_indices = [3, 2, 0, 4, 5, 6, 1] # order in which joint_states message must be indexed to sort joints from base to gripper
+        elif len(robot_joints) == 6:
+            ros_joint_indices = [2, 1, 0, 3, 4, 5]
         pos = np.array([robot_joints[i] for i in ros_joint_indices]) # rearrange joints to be in order from base to gripper
         return pos
 
