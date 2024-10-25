@@ -145,19 +145,22 @@ def main(args):
         else:
             raise ValueError("Invalid agent name")
 
-    # going to start position
+    # Prepare to go to start position
     print("Going to start position")
     start_pos = agent.act(env.get_obs())
     obs = env.get_obs()
     joints = obs["joint_positions"]
     start_pos = start_pos[0:len(joints)]
 
+    # Limit distance of controller from start position
     abs_deltas = np.abs(start_pos[0:len(joints)] - joints)
-    id_max_joint_delta = np.argmax(abs_deltas)
+    delta_limit = 0.8
+    if (abs_deltas > delta_limit).any():
+        print()
+        print("Controller joints are too far from start position:")
 
-    max_joint_delta = 0.8
-    if abs_deltas[id_max_joint_delta] > max_joint_delta:
-        id_mask = abs_deltas > max_joint_delta
+        # Print which joints are too far
+        id_mask = abs_deltas > delta_limit
         print()
         ids = np.arange(len(id_mask))[id_mask]
         for i, delta, joint, current_j in zip(
@@ -171,32 +174,56 @@ def main(args):
             )
         return
 
+    # Ensure start position and joint position have same dimensions
     print(f"Start pos: {len(start_pos)}", f"Joints: {len(joints)}")
     assert len(start_pos) == len(
         joints
     ), f"agent output dim = {len(start_pos)}, but env dim = {len(joints)}"
 
-    max_delta = 0.05
-    for _ in range(25):
+    # Move GELLO to start position
+    start_move_time = 4 # seconds
+    start_move_steps = start_move_time * env.control_rate_hz # Get steps based on time allotted
+    delta_limit_per_step = (np.pi/2) / env.control_rate_hz # Numerator is desired max radians/sec
+    obs = env.get_obs()
+    current_joints = agent.act(obs) # Initialize array of GELLO joints
+    for _ in range(start_move_steps/2):
         obs = env.get_obs()
-        command_joints = agent.act(obs)
+        command_joints = start_pos # Use start pos as target position for GELLO
+        command_joints = command_joints[0:len(current_joints)]
+        delta = command_joints - current_joints
+        max_joint_delta = np.abs(delta).max()
+        if max_joint_delta > delta_limit_per_step:
+            delta = delta / max_joint_delta * delta_limit_per_step # Scale command to obey delta limit per step
+        obs["joint_positions"] = current_joints + delta # Replace robot position with scaled command
+        obs["joint_velocities"] = 0 * obs["joint_velocities"] # Set velocities to 0, as if robot is stationary
+        current_joints = agent.act(obs, moveto=True) # Command GELLO to move with scaled command, get GELLO position for next loop
+
+    # Move follower robot to start position while GELLO holds position
+    for _ in range(start_move_steps/2):
+        obs = env.get_obs()
+        command_joints = agent.act(obs, hold=True) # Command GELLO to hold position, use GELLO position as target
         current_joints = obs["joint_positions"]
         command_joints = command_joints[0:len(current_joints)]
         delta = command_joints - current_joints
         max_joint_delta = np.abs(delta).max()
-        if max_joint_delta > max_delta:
-            delta = delta / max_joint_delta * max_delta
-        env.step(current_joints + delta)
+        if max_joint_delta > delta_limit_per_step:
+            delta = delta / max_joint_delta * delta_limit_per_step # Scale command to obey delta limit per step
+        env.step(current_joints + delta) # Command follower robot to move with scaled command
 
+    # Prepare to start user control
     obs = env.get_obs()
     joints = obs["joint_positions"]
     action = agent.act(obs)
     action = action[0:len(joints)]
-    if (action - joints > 0.5).any():
-        print("Action is too big")
 
-        # print which joints are too big
-        joint_index = np.where(action - joints > 0.8)
+    # Limit distance of controller from new position (Post-move)
+    abs_deltas = np.abs(action - joints)
+    delta_limit = 0.5
+    if (abs_deltas > delta_limit).any():
+        print("Start position error is too big:")
+
+        # Print which joint deltas are too big
+        joint_index = np.where(abs_deltas > delta_limit)
         for j in joint_index:
             print(
                 f"Joint [{j}], leader: {action[j]}, follower: {joints[j]}, diff: {action[j] - joints[j]}"

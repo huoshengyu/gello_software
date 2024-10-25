@@ -94,6 +94,11 @@ class URRobot(Robot):
         robot_joints_msg = std_msgs.msg.Float64MultiArray()
         robot_joints_msg.data = robot_joints
         self._joint_pos_publisher.publish(robot_joints_msg)
+
+        # Get difference between current and target gripper state
+        gripper_current_pos = self._get_gripper_pos()
+        gripper_target_pos = joint_state[-1]
+        gripper_delta_pos = gripper_current_pos - (gripper_target_pos/255) # Given as a proportion, [0,1]
         
         # Gripper commands
         if self._use_gripper:
@@ -102,16 +107,16 @@ class URRobot(Robot):
                 command.rACT = 0x1
                 command.rGTO = 0x1 # go to position
                 command.rATR = 0x0 # No emergency release
-                command.rSP = 128 # speed
-                command.rPR = joint_state[-1] # position (arbitrary, 0 - 255)
+                command.rSP = min(128, 128 * (gripper_delta_pos/0.1)) # speed
+                command.rPR = gripper_target_pos # position (arbitrary, 0 - 255)
                 command.rPR = min(command.rPR, 230)
                 command.rPR = max(command.rPR, 0)
-                command.rFR = 20 # force (N)
+                command.rFR = min(20, 20 * (gripper_delta_pos/0.1)) # force (N)
                 self._robotiq_gripper_publisher.publish(command)
             elif self._gripper_type == "onrobot":
                 command = RG2FTCommand()
-                command.TargetForce = int(200) # force (N/10, 0 - 400)
-                command.TargetWidth = max(0, min(1000, joint_state[-1] * 4)) # position (mm/10, 0 - 1000)
+                command.TargetForce = int(min(200, 200 * (gripper_delta_pos/0.1))) # force (N/10, 0 - 400)
+                command.TargetWidth = max(0, min(1000, (1 - gripper_target_pos) * 1000)) # position (mm/10, 0 - 1000)
                 command.Control = 0x0001
                 self._onrobot_gripper_publisher.publish(command)
             else:

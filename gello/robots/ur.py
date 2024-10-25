@@ -64,6 +64,13 @@ class URRobot(Robot):
 
         self._joint_state = None
 
+        # Joint command parameters
+        self.velocity = 0.25
+        self.acceleration = 0.5
+        self.dt = 1.0 / 500  # 2ms
+        self.lookahead_time = 0.2
+        self.gain = 100
+
     def num_dofs(self) -> int:
         """Get the number of joints of the robot.
 
@@ -80,7 +87,7 @@ class URRobot(Robot):
         time.sleep(0.01)
         gripper_pos = self.gripper.get_current_position()
         assert 0 <= gripper_pos <= 255, "Gripper position must be between 0 and 255"
-        return gripper_pos / 255
+        return gripper_pos / 255 # Given as a proportion in range [0, 1]
 
     def get_joint_state(self) -> np.ndarray:
         """Get the current state of the leader robot.
@@ -102,47 +109,46 @@ class URRobot(Robot):
         Args:
             joint_state (np.ndarray): The state to command the leader robot to.
         """
-        velocity = 0.25
-        acceleration = 0.5
-        dt = 1.0 / 500  # 2ms
-        lookahead_time = 0.2
-        gain = 100
-
+        # Joint commands
         robot_joints = joint_state[:6]
         t_start = self.robot.initPeriod()
         self.robot.servoJ(
-            robot_joints, velocity, acceleration, dt, lookahead_time, gain
+            robot_joints, self.velocity, self.acceleration, self.dt, self.lookahead_time, self.gain
         )
         robot_joints_msg = std_msgs.msg.Float64MultiArray()
         robot_joints_msg.data = robot_joints
         self._joint_pos_publisher.publish(robot_joints_msg)
 
+        # Get difference between current and target gripper state
+        gripper_current_pos = self._get_gripper_pos()
+        gripper_target_pos = joint_state[-1]
+        gripper_delta_pos = gripper_current_pos - (gripper_target_pos/255) # Given as a proportion, [0,1]
+
+        # Gripper commands
         if self._use_gripper:
             if self._gripper_type == "robotiq":
                 command = Robotiq2FGripper_robot_output()
                 command.rACT = 0x1
                 command.rGTO = 0x1 # go to position
                 command.rATR = 0x0 # No emergency release
-                command.rSP = 128 # speed
-                command.rPR = joint_state[-1] # position (arbitrary, 0 - 255)
+                command.rSP = min(128, 128 * (gripper_delta_pos/0.1)) # speed
+                command.rPR = gripper_target_pos # position (arbitrary, 0 - 255)
                 command.rPR = min(command.rPR, 230)
                 command.rPR = max(command.rPR, 0)
                 command.rFR = 20 # force (N)
-                gripper_pos = command.rPR
-                gripper_speed = command.rSP
-                gripper_force = command.rFR
-                self.gripper.move(gripper_pos, gripper_speed, gripper_force)
+                gripper_command_pos = command.rPR
+                gripper_command_speed = command.rSP
+                gripper_command_force = command.rFR
+                self.gripper.move(gripper_command_pos, gripper_command_speed, gripper_command_force)
             elif self._gripper_type == "onrobot":
                 command = RG2FTCommand()
-                command.TargetForce = int(200) # force (N/10, 0 - 400)
-                command.TargetWidth = max(0, min(1000, (1 - joint_state[-1]) * 1000)) # position (mm/10, 0 - 1000)
-                print(joint_state)
-                print(command.TargetWidth)
+                command.TargetForce = int(min(200, 200 * (gripper_delta_pos/0.1))) # force (N/10, 0 - 400)
+                command.TargetWidth = max(0, min(1000, (1 - gripper_target_pos) * 1000)) # position (mm/10, 0 - 1000)
                 command.Control = 0x0001
-                gripper_pos = command.TargetWidth
-                gripper_speed = 0
-                gripper_force = command.TargetForce
-                self.gripper.move(gripper_pos, gripper_speed, gripper_force)
+                gripper_command_pos = command.TargetWidth
+                gripper_command_speed = 0
+                gripper_command_force = command.TargetForce
+                self.gripper.move(gripper_command_pos, gripper_command_speed, gripper_command_force)
             else:
                 print("Invalid gripper type specified!")
         self.robot.waitPeriod(t_start)
