@@ -117,7 +117,7 @@ def main(args):
                     )
             if args.start_joints is None:
                 reset_joints = np.deg2rad(
-                    [180, -90, 90, -90, -90, 0, 0]
+                    [-180, -90, 90, -90, -90, 0, 0]
                 )  # Change this to your own reset joints
             else:
                 reset_joints = args.start_joints
@@ -125,11 +125,12 @@ def main(args):
             curr_joints = env.get_obs()["joint_positions"]
             if reset_joints.shape == curr_joints.shape:
                 max_delta = (np.abs(curr_joints - reset_joints)).max()
-                steps = min(int(max_delta / 0.01), 100)
+                steps = max(int(max_delta * 100), 100)
 
                 for jnt in np.linspace(curr_joints, reset_joints, steps):
                     env.step(jnt)
                     time.sleep(0.001)
+                time.sleep(0.5)
         elif args.agent == "quest":
             from gello.agents.quest_agent import SingleArmQuestAgent
 
@@ -144,133 +145,135 @@ def main(args):
             raise NotImplementedError("add your imitation policy here if there is one")
         else:
             raise ValueError("Invalid agent name")
-
-    # Prepare to go to start position
-    print("Going to start position")
-    start_pos = agent.act(env.get_obs())
-    obs = env.get_obs()
-    joints = obs["joint_positions"]
-    start_pos = start_pos[0:len(joints)]
-
-    # Limit distance of controller from start position
-    abs_deltas = np.abs(start_pos[0:len(joints)] - joints)
-    delta_limit = 0.8
-    if (abs_deltas > delta_limit).any():
-        print()
-        print("Controller joints are too far from start position:")
-
-        # Print which joints are too far
-        id_mask = abs_deltas > delta_limit
-        print()
-        ids = np.arange(len(id_mask))[id_mask]
-        for i, delta, joint, current_j in zip(
-            ids,
-            abs_deltas[id_mask],
-            start_pos[id_mask],
-            joints[id_mask],
-        ):
-            print(
-                f"joint[{i}]: \t delta: {delta:4.3f} , leader: \t{joint:4.3f} , follower: \t{current_j:4.3f}"
-            )
-        return
-
-    # Ensure start position and joint position have same dimensions
-    print(f"Start pos: {len(start_pos)}", f"Joints: {len(joints)}")
-    assert len(start_pos) == len(
-        joints
-    ), f"agent output dim = {len(start_pos)}, but env dim = {len(joints)}"
-
-    # Move GELLO to start position
-    start_move_time = 4 # seconds
-    start_move_steps = start_move_time * env.control_rate_hz # Get steps based on time allotted
-    delta_limit_per_step = (np.pi/2) / env.control_rate_hz # Numerator is desired max radians/sec
-    obs = env.get_obs()
-    current_joints = agent.act(obs) # Initialize array of GELLO joints
-    for _ in range(start_move_steps/2):
+    try:
+        # Prepare to go to start position
+        print("Going to start position")
+        start_pos = agent.act(env.get_obs(), require_grip=False)
         obs = env.get_obs()
-        command_joints = start_pos # Use start pos as target position for GELLO
-        command_joints = command_joints[0:len(current_joints)]
-        delta = command_joints - current_joints
-        max_joint_delta = np.abs(delta).max()
-        if max_joint_delta > delta_limit_per_step:
-            delta = delta / max_joint_delta * delta_limit_per_step # Scale command to obey delta limit per step
-        obs["joint_positions"] = current_joints + delta # Replace robot position with scaled command
-        obs["joint_velocities"] = 0 * obs["joint_velocities"] # Set velocities to 0, as if robot is stationary
-        current_joints = agent.act(obs, moveto=True) # Command GELLO to move with scaled command, get GELLO position for next loop
+        joints = obs["joint_positions"]
+        start_pos = start_pos[0:len(joints)]
 
-    # Move follower robot to start position while GELLO holds position
-    for _ in range(start_move_steps/2):
+        # Limit distance of controller from start position
+        abs_deltas = np.abs(start_pos[0:len(joints)] - joints)
+        delta_limit = 0.8
+        if (abs_deltas > delta_limit).any():
+            print()
+            print("Controller joints are too far from start position:")
+
+            # Print which joints are too far
+            id_mask = abs_deltas > delta_limit
+            print()
+            ids = np.arange(len(id_mask))[id_mask]
+            for i, delta, joint, current_j in zip(
+                ids,
+                abs_deltas[id_mask],
+                start_pos[id_mask],
+                joints[id_mask],
+            ):
+                print(
+                    f"joint[{i}]: \t delta: {delta:4.3f} , leader: \t{joint:4.3f} , follower: \t{current_j:4.3f}"
+                )
+            return
+
+        # Ensure start position and joint position have same dimensions
+        print(f"Start pos: {len(start_pos)}", f"Joints: {len(joints)}")
+        assert len(start_pos) == len(
+            joints
+        ), f"agent output dim = {len(start_pos)}, but env dim = {len(joints)}"
+
+        # Move GELLO to start position
+        start_move_time = 4 # seconds
+        start_move_steps = int(start_move_time * env._rate.rate) # Get steps based on time allotted
+        delta_limit_per_step = (np.pi/2) / env._rate.rate # Numerator is desired max radians/sec
         obs = env.get_obs()
-        command_joints = agent.act(obs, hold=True) # Command GELLO to hold position, use GELLO position as target
-        current_joints = obs["joint_positions"]
-        command_joints = command_joints[0:len(current_joints)]
-        delta = command_joints - current_joints
-        max_joint_delta = np.abs(delta).max()
-        if max_joint_delta > delta_limit_per_step:
-            delta = delta / max_joint_delta * delta_limit_per_step # Scale command to obey delta limit per step
-        env.step(current_joints + delta) # Command follower robot to move with scaled command
+        current_joints = agent.act(obs) # Initialize array of GELLO joints
+        for _ in range(start_move_steps//2):
+            obs = env.get_obs()
+            command_joints = start_pos # Use start pos as target position for GELLO
+            command_joints = command_joints[0:len(current_joints)]
+            delta = command_joints - current_joints
+            max_joint_delta = np.abs(delta).max()
+            if max_joint_delta > delta_limit_per_step:
+                delta = delta / max_joint_delta * delta_limit_per_step # Scale command to obey delta limit per step
+            print("step")
+            current_joints = agent.act(obs, moveto=True, goal=(current_joints + delta)) # Command GELLO to move with scaled command, get GELLO position for next loop
 
-    # Prepare to start user control
-    obs = env.get_obs()
-    joints = obs["joint_positions"]
-    action = agent.act(obs)
-    action = action[0:len(joints)]
+        # Move follower robot to GELLO while GELLO holds position
+        for _ in range(start_move_steps//2):
+            obs = env.get_obs()
+            command_joints = agent.act(obs, hold=True) # Command GELLO to hold position, use GELLO position as target
+            current_joints = obs["joint_positions"]
+            command_joints = command_joints[0:len(current_joints)]
+            delta = command_joints - current_joints
+            max_joint_delta = np.abs(delta).max()
+            if max_joint_delta > delta_limit_per_step:
+                delta = delta / max_joint_delta * delta_limit_per_step # Scale command to obey delta limit per step
+            env.step(current_joints + delta) # Command follower robot to move with scaled command
 
-    # Limit distance of controller from new position (Post-move)
-    abs_deltas = np.abs(action - joints)
-    delta_limit = 0.5
-    if (abs_deltas > delta_limit).any():
-        print("Start position error is too big:")
-
-        # Print which joint deltas are too big
-        joint_index = np.where(abs_deltas > delta_limit)
-        for j in joint_index:
-            print(
-                f"Joint [{j}], leader: {action[j]}, follower: {joints[j]}, diff: {action[j] - joints[j]}"
-            )
-        exit()
-
-    if args.use_save_interface:
-        from gello.data_utils.keyboard_interface import KBReset
-
-        kb_interface = KBReset()
-
-    print_color("\nStart 🚀🚀🚀", color="green", attrs=("bold",))
-
-    save_path = None
-    start_time = time.time()
-    while True:
-        num = time.time() - start_time
-        message = f"\rTime passed: {round(num, 2)}          "
-        print_color(
-            message,
-            color="white",
-            attrs=("bold",),
-            end="",
-            flush=True,
-        )
+        # Prepare to start user control
+        obs = env.get_obs()
+        joints = obs["joint_positions"]
         action = agent.act(obs)
         action = action[0:len(joints)]
-        dt = datetime.datetime.now()
-        if args.use_save_interface:
-            state = kb_interface.update()
-            if state == "start":
-                dt_time = datetime.datetime.now()
-                save_path = (
-                    Path(args.data_dir).expanduser()
-                    / args.agent
-                    / dt_time.strftime("%m%d_%H%M%S")
+
+        # Limit distance of controller from new position (Post-move)
+        abs_deltas = np.abs(action - joints)
+        delta_limit = 0.5
+        if (abs_deltas > delta_limit).any():
+            print("Start position error is too big:")
+
+            # Print which joint deltas are too big
+            joint_index = np.where(abs_deltas > delta_limit)
+            for j in joint_index:
+                print(
+                    f"Joint [{j}], leader: {action[j]}, follower: {joints[j]}, diff: {action[j] - joints[j]}"
                 )
-                save_path.mkdir(parents=True, exist_ok=True)
-                print(f"Saving to {save_path}")
-            elif state == "save":
-                assert save_path is not None, "something went wrong"
-                save_frame(save_path, dt, obs, action)
-            elif state == "normal":
-                save_path = None
-            else:
-                raise ValueError(f"Invalid state {state}")
-        obs = env.step(action)
+            exit()
+
+        if args.use_save_interface:
+            from gello.data_utils.keyboard_interface import KBReset
+
+            kb_interface = KBReset()
+
+        print_color("\nStart 🚀🚀🚀", color="green", attrs=("bold",))
+
+        save_path = None
+        start_time = time.time()
+        while True:
+            num = time.time() - start_time
+            message = f"\rTime passed: {round(num, 2)}          "
+            print_color(
+                message,
+                color="white",
+                attrs=("bold",),
+                end="",
+                flush=True,
+            )
+            action = agent.act(obs)
+            action = action[0:len(joints)]
+            dt = datetime.datetime.now()
+            if args.use_save_interface:
+                state = kb_interface.update()
+                if state == "start":
+                    dt_time = datetime.datetime.now()
+                    save_path = (
+                        Path(args.data_dir).expanduser()
+                        / args.agent
+                        / dt_time.strftime("%m%d_%H%M%S")
+                    )
+                    save_path.mkdir(parents=True, exist_ok=True)
+                    print(f"Saving to {save_path}")
+                elif state == "save":
+                    assert save_path is not None, "something went wrong"
+                    save_frame(save_path, dt, obs, action)
+                elif state == "normal":
+                    save_path = None
+                else:
+                    raise ValueError(f"Invalid state {state}")
+            obs = env.step(action)
+    except Exception as e:
+        print(e)
+        agent._robot.set_torque_mode(False)
 
 
 if __name__ == "__main__":

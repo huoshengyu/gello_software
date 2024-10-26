@@ -74,7 +74,7 @@ class DynamixelRobot(Robot):
             self._driver.set_torque_mode(False)
         else:
             self._driver = FakeDynamixelDriver(joint_ids)
-        self._torque_on = False
+        self._torque_enabled = np.zeros(len(joint_ids), dtype=bool)
         self._last_pos = None
         self._alpha = 0.99
 
@@ -127,11 +127,9 @@ class DynamixelRobot(Robot):
     def command_joint_state(self, joint_state: np.ndarray) -> None:
         self._driver.set_joints((joint_state + self._joint_offsets).tolist())
 
-    def set_torque_mode(self, mode: bool):
-        if mode == self._torque_on:
-            return
-        self._driver.set_torque_mode(mode)
-        self._torque_on = mode
+    def set_torque_mode(self, mode: bool, ids: Optional[Sequence[int]] = None):
+        self._driver.set_torque_mode(mode, ids)
+        self._torque_enabled = self._driver.torque_enabled()
 
     def get_observations(self) -> Dict[str, np.ndarray]:
         return {"joint_state": self.get_joint_state()}
