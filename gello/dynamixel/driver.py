@@ -34,19 +34,20 @@ class DynamixelDriverProtocol(Protocol):
         """
         ...
 
-    def torque_enabled(self) -> bool:
+    def torque_enabled(self) -> dict[bool]:
         """Check if torque is enabled for the Dynamixel servos.
 
         Returns:
-            bool: True if torque is enabled, False if it is disabled.
+            dict[int, bool]: True if servo ID [int] is enabled, False if it is disabled.
         """
         ...
 
-    def set_torque_mode(self, enable: bool):
-        """Set the torque mode for the Dynamixel servos.
+    def set_torque_mode(self, enable: bool, joint_ids: Sequence[int] = None):
+        """Set the torque mode for the specified Dynamixel servos.
 
         Args:
             enable (bool): True to enable torque, False to disable.
+            joint_ids: List of servo IDs to enable/disable. Defaults to None.
         """
         ...
 
@@ -63,25 +64,28 @@ class DynamixelDriverProtocol(Protocol):
 
 
 class FakeDynamixelDriver(DynamixelDriverProtocol):
-    def __init__(self, ids: Sequence[int]):
-        self._ids = ids
-        self._joint_angles = np.zeros(len(ids), dtype=int)
-        self._torque_enabled = False
+    def __init__(self, joint_ids: Sequence[int]):
+        self._joint_ids = joint_ids
+        self._joint_angles = np.zeros(len(joint_ids), dtype=int)
+        self._torque_enabled = dict.fromkeys(joint_ids, False)
 
     def set_joints(self, joint_angles: Sequence[float]):
-        if len(joint_angles) != len(self._ids):
+        if len(joint_angles) != len(self._joint_ids):
             raise ValueError(
                 "The length of joint_angles must match the number of servos"
             )
-        if not self._torque_enabled:
+        if not self._torque_enabled.any():
             raise RuntimeError("Torque must be enabled to set joint angles")
         self._joint_angles = np.array(joint_angles)
 
-    def torque_enabled(self) -> bool:
+    def torque_enabled(self) -> dict[int, bool]:
         return self._torque_enabled
 
-    def set_torque_mode(self, enable: bool):
-        self._torque_enabled = enable
+    def set_torque_mode(self, enable: bool, joint_ids: Sequence[int] = None):
+        if joint_ids is None:
+            joint_ids = self._joint_ids
+        for joint_id in joint_ids:
+            self._torque_enabled[joint_id] = enable
 
     def get_joints(self) -> np.ndarray:
         return self._joint_angles.copy()
@@ -92,16 +96,16 @@ class FakeDynamixelDriver(DynamixelDriverProtocol):
 
 class DynamixelDriver(DynamixelDriverProtocol):
     def __init__(
-        self, ids: Sequence[int], port: str = "/dev/ttyUSB0", baudrate: int = 57600
+        self, joint_ids: Sequence[int], port: str = "/dev/ttyUSB0", baudrate: int = 57600
     ):
         """Initialize the DynamixelDriver class.
 
         Args:
-            ids (Sequence[int]): A list of IDs for the Dynamixel servos.
+            joint_ids (Sequence[int]): A list of IDs for the Dynamixel servos.
             port (str): The USB port to connect to the arm.
             baudrate (int): The baudrate for communication.
         """
-        self._ids = ids
+        self._joint_ids = joint_ids
         self._joint_angles = None
         self._lock = Lock()
 
@@ -129,16 +133,16 @@ class DynamixelDriver(DynamixelDriverProtocol):
             raise RuntimeError(f"Failed to change the baudrate, {baudrate}")
 
         # Add parameters for each Dynamixel servo to the group sync read
-        for dxl_id in self._ids:
-            if not self._groupSyncRead.addParam(dxl_id):
+        for joint_id in self._joint_ids:
+            if not self._groupSyncRead.addParam(joint_id):
                 raise RuntimeError(
-                    f"Failed to add parameter for Dynamixel with ID {dxl_id}"
+                    f"Failed to add parameter for Dynamixel with ID {joint_id}"
                 )
 
         # Disable torque for each Dynamixel servo
-        self._torque_enabled = False
+        self._torque_enabled = dict.fromkeys(joint_ids, False)
         try:
-            self.set_torque_mode(self._torque_enabled)
+            self.set_torque_mode(False)
         except Exception as e:
             print(f"port: {port}, {e}")
 
@@ -146,33 +150,35 @@ class DynamixelDriver(DynamixelDriverProtocol):
         self._start_reading_thread()
 
     def set_joints(self, joint_angles: Sequence[float]):
-        if len(joint_angles) != len(self._ids):
+        if len(joint_angles) != len(self._joint_ids):
             raise ValueError(
                 "The length of joint_angles must match the number of servos"
             )
-        if not self._torque_enabled:
+        if not self._torque_enabled.any():
             raise RuntimeError("Torque must be enabled to set joint angles")
 
-        for dxl_id, angle in zip(self._ids, joint_angles):
-            # Convert the angle to the appropriate value for the servo
-            position_value = int(angle * 2048 / np.pi)
+        for joint_id, angle in zip(self._joint_ids, joint_angles):
+            # Only act on active joints, ignore inactive joints
+            if self._torque_enabled[joint_id]:
+                # Convert the angle to the appropriate value for the servo
+                position_value = int(angle * 2048 / np.pi)
 
-            # Allocate goal position value into byte array
-            param_goal_position = [
-                DXL_LOBYTE(DXL_LOWORD(position_value)),
-                DXL_HIBYTE(DXL_LOWORD(position_value)),
-                DXL_LOBYTE(DXL_HIWORD(position_value)),
-                DXL_HIBYTE(DXL_HIWORD(position_value)),
-            ]
+                # Allocate goal position value into byte array
+                param_goal_position = [
+                    DXL_LOBYTE(DXL_LOWORD(position_value)),
+                    DXL_HIBYTE(DXL_LOWORD(position_value)),
+                    DXL_LOBYTE(DXL_HIWORD(position_value)),
+                    DXL_HIBYTE(DXL_HIWORD(position_value)),
+                ]
 
-            # Add goal position value to the Syncwrite parameter storage
-            dxl_addparam_result = self._groupSyncWrite.addParam(
-                dxl_id, param_goal_position
-            )
-            if not dxl_addparam_result:
-                raise RuntimeError(
-                    f"Failed to set joint angle for Dynamixel with ID {dxl_id}"
+                # Add goal position value to the Syncwrite parameter storage
+                dxl_addparam_result = self._groupSyncWrite.addParam(
+                    joint_id, param_goal_position
                 )
+                if not dxl_addparam_result:
+                    raise RuntimeError(
+                        f"Failed to set joint angle for Dynamixel with ID {joint_id}"
+                    )
 
         # Syncwrite goal position
         dxl_comm_result = self._groupSyncWrite.txPacket()
@@ -182,24 +188,26 @@ class DynamixelDriver(DynamixelDriverProtocol):
         # Clear syncwrite parameter storage
         self._groupSyncWrite.clearParam()
 
-    def torque_enabled(self) -> bool:
+    def torque_enabled(self) -> dict[int, bool]:
         return self._torque_enabled
 
-    def set_torque_mode(self, enable: bool):
+    def set_torque_mode(self, enable: bool, joint_ids: Sequence[int] = None):
+        if joint_ids is None:
+            joint_ids = self._joint_ids
         torque_value = TORQUE_ENABLE if enable else TORQUE_DISABLE
         with self._lock:
-            for dxl_id in self._ids:
+            for joint_id in joint_ids:
                 dxl_comm_result, dxl_error = self._packetHandler.write1ByteTxRx(
-                    self._portHandler, dxl_id, ADDR_TORQUE_ENABLE, torque_value
+                    self._portHandler, joint_id, ADDR_TORQUE_ENABLE, torque_value
                 )
                 if dxl_comm_result != COMM_SUCCESS or dxl_error != 0:
                     print(dxl_comm_result)
                     print(dxl_error)
                     raise RuntimeError(
-                        f"Failed to set torque mode for Dynamixel with ID {dxl_id}"
+                        f"Failed to set torque mode for Dynamixel with ID {joint_id}"
                     )
-
-        self._torque_enabled = enable
+                else:
+                    self._torque_enabled[joint_id] = enable
 
     def _start_reading_thread(self):
         self._reading_thread = Thread(target=self._read_joint_angles)
@@ -211,23 +219,23 @@ class DynamixelDriver(DynamixelDriverProtocol):
         while not self._stop_thread.is_set():
             time.sleep(0.001)
             with self._lock:
-                _joint_angles = np.zeros(len(self._ids), dtype=int)
+                _joint_angles = np.zeros(len(self._joint_ids), dtype=int)
                 dxl_comm_result = self._groupSyncRead.txRxPacket()
                 if dxl_comm_result != COMM_SUCCESS:
                     print(f"warning, comm failed: {dxl_comm_result}")
                     continue
-                for i, dxl_id in enumerate(self._ids):
+                for i, joint_id in enumerate(self._joint_ids):
                     if self._groupSyncRead.isAvailable(
-                        dxl_id, ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION
+                        joint_id, ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION
                     ):
                         angle = self._groupSyncRead.getData(
-                            dxl_id, ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION
+                            joint_id, ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION
                         )
                         angle = np.int32(np.uint32(angle))
                         _joint_angles[i] = angle
                     else:
                         raise RuntimeError(
-                            f"Failed to get joint angles for Dynamixel with ID {dxl_id}"
+                            f"Failed to get joint angles for Dynamixel with ID {joint_id}"
                         )
                 self._joint_angles = _joint_angles
             # self._groupSyncRead.clearParam() # TODO what does this do? should i add it
@@ -248,13 +256,13 @@ class DynamixelDriver(DynamixelDriverProtocol):
 
 def main():
     # Set the port, baudrate, and servo IDs
-    ids = [1]
+    joint_ids = [1]
 
     # Create a DynamixelDriver instance
     try:
-        driver = DynamixelDriver(ids)
+        driver = DynamixelDriver(joint_ids)
     except FileNotFoundError:
-        driver = DynamixelDriver(ids, port="/dev/cu.usbserial-FT7WBMUB")
+        driver = DynamixelDriver(joint_ids, port="/dev/cu.usbserial-FT7WBMUB")
 
     # Test setting torque mode
     driver.set_torque_mode(True)
@@ -264,8 +272,8 @@ def main():
     try:
         while True:
             joint_angles = driver.get_joints()
-            print(f"Joint angles for IDs {ids}: {joint_angles}")
-            # print(f"Joint angles for IDs {ids[1]}: {joint_angles[1]}")
+            print(f"Joint angles for IDs {joint_ids}: {joint_angles}")
+            # print(f"Joint angles for IDs {joint_ids[1]}: {joint_angles[1]}")
     except KeyboardInterrupt:
         driver.close()
 
