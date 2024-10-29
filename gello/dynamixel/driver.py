@@ -34,7 +34,7 @@ class DynamixelDriverProtocol(Protocol):
         """
         ...
 
-    def torque_enabled(self) -> dict[bool]:
+    def torque_enabled(self):
         """Check if torque is enabled for the Dynamixel servos.
 
         Returns:
@@ -78,7 +78,7 @@ class FakeDynamixelDriver(DynamixelDriverProtocol):
             raise RuntimeError("Torque must be enabled to set joint angles")
         self._joint_angles = np.array(joint_angles)
 
-    def torque_enabled(self) -> dict[int, bool]:
+    def torque_enabled(self):
         return self._torque_enabled
 
     def set_torque_mode(self, enable: bool, joint_ids: Sequence[int] = None):
@@ -188,7 +188,7 @@ class DynamixelDriver(DynamixelDriverProtocol):
         # Clear syncwrite parameter storage
         self._groupSyncWrite.clearParam()
 
-    def torque_enabled(self) -> dict[int, bool]:
+    def torque_enabled(self):
         return self._torque_enabled
 
     def set_torque_mode(self, enable: bool, joint_ids: Sequence[int] = None):
