@@ -122,7 +122,7 @@ class URRobot(Robot):
         # Get difference between current and target gripper state
         gripper_current_pos = self._get_gripper_pos()
         gripper_target_pos = joint_state[-1]
-        gripper_delta_pos = gripper_current_pos - (gripper_target_pos/255) # Given as a proportion, [0,1]
+        gripper_delta_pos = gripper_target_pos - gripper_current_pos # Given as a proportion, [0,1]
 
         # Gripper commands
         if self._use_gripper:
@@ -131,7 +131,7 @@ class URRobot(Robot):
                 command.rACT = 0x1
                 command.rGTO = 0x1 # go to position
                 command.rATR = 0x0 # No emergency release
-                command.rSP = min(128, 128 * (gripper_delta_pos/0.1)) # speed
+                command.rSP = min(128, abs(128 * (gripper_delta_pos/0.1))) # speed
                 command.rPR = gripper_target_pos # position (arbitrary, 0 - 255)
                 command.rPR = min(command.rPR, 230)
                 command.rPR = max(command.rPR, 0)
@@ -142,7 +142,7 @@ class URRobot(Robot):
                 self.gripper.move(gripper_command_pos, gripper_command_speed, gripper_command_force)
             elif self._gripper_type == "onrobot":
                 command = RG2FTCommand()
-                command.TargetForce = int(min(200, 200 * (gripper_delta_pos/0.1))) # force (N/10, 0 - 400)
+                command.TargetForce = int(min(200, abs(200 * (gripper_delta_pos/0.025)) + 5)) # force (N/10, 0 - 400)
                 command.TargetWidth = max(0, min(1000, (1 - gripper_target_pos) * 1000)) # position (mm/10, 0 - 1000)
                 command.Control = 0x0001
                 gripper_command_pos = command.TargetWidth

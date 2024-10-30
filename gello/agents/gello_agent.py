@@ -106,7 +106,7 @@ PORT_CONFIG_MAP: Dict[str, DynamixelRobotConfig] = {
     # HRVIP UR
     "/dev/serial/by-id/usb-FTDI_USB__-__Serial_Converter_FT8ISVJ0-if00-port0": DynamixelRobotConfig(
         joint_ids=(1, 2, 3, 4, 5, 6),
-        joint_offsets=[4*np.pi/2, 2*np.pi/2, 4*np.pi/2, 2*np.pi/2, 2*np.pi/2, 1*np.pi/2 ],
+        joint_offsets=[0*np.pi/2, 2*np.pi/2, 4*np.pi/2, 2*np.pi/2, 2*np.pi/2, 1*np.pi/2 ],
         joint_signs=(1, 1, -1, 1, 1, 1),
         gripper_config=(7, 18, -23),
     ),
@@ -155,14 +155,3 @@ class GelloAgent(Agent):
             print(e)
             self._robot.set_torque_mode(False, self._robot._joint_ids)
         return joint_state
-        dyna_joints = self._robot.get_joint_state()
-        # current_q = dyna_joints[:-1]  # last one dim is the gripper
-        current_gripper = dyna_joints[-1]  # last one dim is the gripper
-
-        print(current_gripper)
-        if current_gripper < 0.2:
-            self._robot.set_torque_mode(False)
-            return obs["joint_positions"]
-        else:
-            self._robot.set_torque_mode(False)
-            return dyna_joints

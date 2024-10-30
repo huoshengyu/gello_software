@@ -197,20 +197,21 @@ class DynamixelDriver(DynamixelDriverProtocol):
         torque_value = TORQUE_ENABLE if enable else TORQUE_DISABLE
         with self._lock:
             for joint_id in joint_ids:
-                dxl_comm_result, dxl_error = self._packetHandler.write1ByteTxRx(
-                    self._portHandler, joint_id, ADDR_TORQUE_ENABLE, torque_value
-                )
-                if dxl_comm_result != COMM_SUCCESS or dxl_error != 0:
-                    print(dxl_comm_result)
-                    result_message = self._packetHandler.getTxRxResult(dxl_comm_result)
-                    error_message = self._packetHandler.getRxPacketError(dxl_error)
-                    print(result_message)
-                    print(error_message)
-                    raise RuntimeError(
-                        f"Failed to set torque mode for Dynamixel with ID {joint_id}"
+                if (self._torque_enabled[joint_id] != enable):
+                    dxl_comm_result, dxl_error = self._packetHandler.write1ByteTxRx(
+                        self._portHandler, joint_id, ADDR_TORQUE_ENABLE, torque_value
                     )
-                else:
-                    self._torque_enabled[joint_id] = enable
+                    if dxl_comm_result != COMM_SUCCESS or dxl_error != 0:
+                        print(dxl_comm_result)
+                        result_message = self._packetHandler.getTxRxResult(dxl_comm_result)
+                        error_message = self._packetHandler.getRxPacketError(dxl_error)
+                        print(result_message)
+                        print(error_message)
+                        raise RuntimeError(
+                            f"Failed to set torque mode for Dynamixel with ID {joint_id}"
+                        )
+                    else:
+                        self._torque_enabled[joint_id] = enable
 
     def _start_reading_thread(self):
         self._reading_thread = Thread(target=self._read_joint_angles)

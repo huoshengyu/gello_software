@@ -117,7 +117,7 @@ def main(args):
                     )
             if args.start_joints is None:
                 reset_joints = np.deg2rad(
-                    [-180, -90, 90, -90, -90, 0, 0]
+                    [180, -90, 90, -90, -90, 0, 0]
                 )  # Change this to your own reset joints
             else:
                 reset_joints = args.start_joints
@@ -270,7 +270,7 @@ def main(args):
                 end="",
                 flush=True,
             )
-            action = agent.act(obs)
+            action = agent.act(obs, require_grip=False)
             action = action[0:len(joints)]
             dt = datetime.datetime.now()
             if args.use_save_interface:
