@@ -182,33 +182,54 @@ def main(args):
         ), f"agent output dim = {len(start_pos)}, but env dim = {len(joints)}"
 
         # Move GELLO to start position
-        start_move_time = 4 # seconds
+        start_move_time = 4.0 # seconds
         start_move_steps = int(start_move_time * env._rate.rate) # Get steps based on time allotted
-        delta_limit_per_step = (np.pi/2) / env._rate.rate # Numerator is desired max radians/sec
+        print(start_move_steps)
+        delta_limit_per_second = np.pi/8 # Desired max radians/sec
         obs = env.get_obs()
-        current_joints = agent.act(obs) # Initialize array of GELLO joints
-        for _ in range(start_move_steps//2):
+        start_joints = agent.act(obs) # Initialize array of GELLO joints
+        command_joints = start_pos # Use start pos as target position for GELLO
+        command_joints = command_joints[0:len(start_joints)]
+        joint_delta = command_joints - start_joints
+        max_joint_delta = max(np.abs(joint_delta).max(), 0.000001)
+        delta_proportion_per_second = min(1.0, abs(delta_limit_per_second / max_joint_delta)) # Scale command to obey delta limit per step
+        
+        print("Start GELLO move")
+        start_time = datetime.datetime.now()
+        while (datetime.datetime.now() - start_time).total_seconds() < start_move_time/2:
             obs = env.get_obs()
-            command_joints = start_pos # Use start pos as target position for GELLO
-            command_joints = command_joints[0:len(current_joints)]
-            delta = command_joints - current_joints
-            max_joint_delta = np.abs(delta).max()
-            if max_joint_delta > delta_limit_per_step:
-                delta = delta / max_joint_delta * delta_limit_per_step # Scale command to obey delta limit per step
-            print("step")
-            current_joints = agent.act(obs, moveto=True, goal=(current_joints + delta)) # Command GELLO to move with scaled command, get GELLO position for next loop
+            seconds_elapsed = (datetime.datetime.now() - start_time).total_seconds()
+            delta_proportion_total = min(1.0, abs(delta_proportion_per_second * seconds_elapsed)) # Find target progress toward final target position
+            delta = joint_delta * delta_proportion_total # Find current target position
+            action = agent.act(obs, moveto=True, goal=(start_joints + delta)) # Command GELLO to move with scaled command, get GELLO position for next loop
+            env._rate.sleep()
+
+        end_time = datetime.datetime.now()
+        elapsed_time = end_time - start_time
+        print(elapsed_time)
 
         # Move follower robot to GELLO while GELLO holds position
-        for _ in range(start_move_steps//2):
+        print("Start Robot move")
+        start_time = datetime.datetime.now()
+        previous_step_time = datetime.datetime.now()
+        while (datetime.datetime.now() - start_time).total_seconds() < start_move_time/2:
+            current_step_time = datetime.datetime.now()
+            seconds_elapsed_this_step = (current_step_time - previous_step_time).total_seconds()
+            previous_step_time = current_step_time
+            delta_limit_this_step = delta_limit_per_second * seconds_elapsed_this_step
             obs = env.get_obs()
             command_joints = agent.act(obs, hold=True) # Command GELLO to hold position, use GELLO position as target
             current_joints = obs["joint_positions"]
             command_joints = command_joints[0:len(current_joints)]
             delta = command_joints - current_joints
             max_joint_delta = np.abs(delta).max()
-            if max_joint_delta > delta_limit_per_step:
-                delta = delta / max_joint_delta * delta_limit_per_step # Scale command to obey delta limit per step
+            if max_joint_delta > delta_limit_this_step:
+                delta = (delta / max_joint_delta) * delta_limit_this_step # Scale command to obey delta limit per step
             env.step(current_joints + delta) # Command follower robot to move with scaled command
+
+        end_time = datetime.datetime.now()
+        elapsed_time = end_time - start_time
+        print(elapsed_time)
 
         # Prepare to start user control
         obs = env.get_obs()
