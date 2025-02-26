@@ -19,15 +19,26 @@ class Args:
 def launch_robot_server(args: Args):
     port = args.robot_port
     if args.robot == "sim_ur":
+        from gello.robots.sim_robot import MujocoRobotServer
+
         MENAGERIE_ROOT: Path = (
             Path(__file__).parent.parent / "third_party" / "mujoco_menagerie"
         )
         xml = MENAGERIE_ROOT / "universal_robots_ur5e" / "ur5e.xml"
         gripper_xml = MENAGERIE_ROOT / "robotiq_2f85" / "2f85.xml"
-        from gello.robots.sim_robot import MujocoRobotServer
-
         server = MujocoRobotServer(
             xml_path=xml, gripper_xml_path=gripper_xml, port=port, host=args.hostname
+        )
+        server.serve()
+    elif args.robot == "sim_trossen":
+        from gello.robots.sim_robot import MujocoRobotServer\
+        
+        MENAGERIE_ROOT: Path = (
+            Path(__file__).parent.parent / "third_party" / "mujoco_menagerie"
+        )
+        xml = MENAGERIE_ROOT / "trossen_vx300s" / "vx300s.xml"
+        server = MujocoRobotServer(
+            xml_path=xml, port=port, host=args.hostname
         )
         server.serve()
     elif args.robot == "sim_panda":
@@ -74,6 +85,10 @@ def launch_robot_server(args: Args):
             from gello.robots.ur_ros import URRobot
 
             robot = URRobot(no_gripper=False, gripper_type="onrobot")
+        elif args.robot == "trossen":
+            from gello.robots.trossen import TrossenRobot
+
+            robot = TrossenRobot(no_gripper=False)
         elif args.robot == "panda":
             from gello.robots.panda import PandaRobot
 

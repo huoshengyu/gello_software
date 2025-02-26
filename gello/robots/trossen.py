@@ -1,43 +1,36 @@
+# General Packages
 from typing import Dict
-
 import numpy as np
+# ROS Packages
+import rospy
+import sensor_msgs.msg 
+# Interbotix/Trossen Packages
+from interbotix_xs_modules.arm import InterbotixManipulatorXS
+from interbotix_xs_modules.gripper import InterbotixGripperXS
+from interbotix_xs_msgs.srv import JointGroupCommand
 
 from gello.robots.robot import Robot
-from gello.robots.robotiq_gripper import RobotiqGripper
-from gello.robots.onrobot_gripper_ros import OnRobotRG2FTROS
 
 
 class TrossenRobot(Robot):
     """A class representing a Trossen robot."""
 
-    def __init__(self, robot_ip: str = "192.168.1.102", no_gripper: bool = False, gripper_type: str = "robotiq"):
-        import rtde_control
-        import rtde_receive
+    def __init__(self, robot_ip: str = "192.168.1.102", no_gripper: bool = False, gripper_type: str = "trossen"):
+        joint_state_topic = rospy.get_param("~joint_state_topic", "joint_states")
+        self.joint_state_topic = rospy.subscriber(joint_state_topic, sensor_msgs.msg.JointState, 1)
+        self.joint_state = None
 
-        [print("in ur robot") for _ in range(4)]
+        [print("in trossen robot") for _ in range(4)]
         self.robot = None
         while not self.robot:
             try:
-                self.robot = rtde_control.RTDEControlInterface(robot_ip)
+                if not no_gripper:
+                    self.robot = InterbotixManipulatorXS("vx300s", "arm", "gripper")
+                else:
+                    self.robot = InterbotixManipulatorXS("vx300s", "arm")
             except Exception as e:
                 print(e)
                 print(robot_ip)
-
-        self.r_inter = rtde_receive.RTDEReceiveInterface(robot_ip)
-        if not no_gripper:
-            if gripper_type == "robotiq":
-
-                self.gripper = RobotiqGripper()
-                self.gripper.connect(device="/tmp/ttyUR")
-                print("gripper connected")
-            elif gripper_type == "onrobot":
-
-                onrobot_ip = "192.168.1.1"
-                onrobot_port = "502"
-                self.gripper = OnRobotRG2FTROS()
-                print("gripper connected")
-
-            # gripper.activate()
 
         [print("connect") for _ in range(4)]
 
@@ -56,12 +49,7 @@ class TrossenRobot(Robot):
         return 6
 
     def _get_gripper_pos(self) -> float:
-        import time
-
-        time.sleep(0.01)
-        gripper_pos = self.gripper.get_current_position()
-        assert 0 <= gripper_pos <= 255, "Gripper position must be between 0 and 255"
-        return gripper_pos / 255
+        return self.joint_state.position[-1]
 
     def get_joint_state(self) -> np.ndarray:
         """Get the current state of the leader robot.
@@ -69,12 +57,7 @@ class TrossenRobot(Robot):
         Returns:
             T: The current state of the leader robot.
         """
-        robot_joints = self.r_inter.getActualQ()
-        if self._use_gripper:
-            gripper_pos = self._get_gripper_pos()
-            pos = np.append(robot_joints, gripper_pos)
-        else:
-            pos = robot_joints
+        pos = self.joint_state[:self.num_dofs()]
         return np.array(pos)
 
     def command_joint_state(self, joint_state: np.ndarray) -> None:
@@ -91,14 +74,13 @@ class TrossenRobot(Robot):
 
         robot_joints = joint_state[:6]
         t_start = self.robot.initPeriod()
-        self.robot.servoJ(
-            robot_joints, velocity, acceleration, dt, lookahead_time, gain
-        )
+        self.robot.arm.set_joint_positions(robot_joints)
         if self._use_gripper:
-            gripper_pos = joint_state[-1] * 255
-            gripper_speed = 255
-            gripper_force = 10
-            self.gripper.move(gripper_pos, gripper_speed, gripper_force)
+            gripper_pos = joint_state[-1]
+            if gripper_pos < 0.6:
+                self.robot.gripper.close(2.0)
+            else:
+                self.robot.gripper.open(2.0)
         self.robot.waitPeriod(t_start)
 
     def freedrive_enabled(self) -> bool:
@@ -117,10 +99,10 @@ class TrossenRobot(Robot):
         """
         if enable and not self._free_drive:
             self._free_drive = True
-            self.robot.freedriveMode()
+            # self.robot.freedriveMode()
         elif not enable and self._free_drive:
             self._free_drive = False
-            self.robot.endFreedriveMode()
+            # self.robot.endFreedriveMode()
 
     def get_observations(self) -> Dict[str, np.ndarray]:
         joints = self.get_joint_state()
@@ -132,6 +114,9 @@ class TrossenRobot(Robot):
             "ee_pos_quat": pos_quat,
             "gripper_position": gripper_pos,
         }
+    
+    def joint_state_callback(self, msg):
+        self.joint_state = msg
 
 
 def main():

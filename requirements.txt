@@ -1,5 +1,7 @@
 # keep in alphabetical order
 dm_control
+interbotix_xs_msgs
+numpy-quaternion
 Pillow
 pygame
 pyspacemouse
@@ -8,14 +10,9 @@ pyquaternion
 pyrealsense2
 pure-python-adb
 quaternion
+termcolor
 tyro
 ur-rtde
-zmq
 xarm
 xarm-python-sdk
-numpy-quaternion
-termcolor
-
-
-# python scripts/gello_get_offset.py --start-joints 0 -1.57 1.57 -1.57 -1.57 0 --joint-signs 1 1 -1 1 1 1 --port /dev/serial/by-id/usb-FTDI_USB__-__Serial_Converter_FT8ISVJ0-if00-port0
-# replace values with your own
+zmq
