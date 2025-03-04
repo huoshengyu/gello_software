@@ -6,7 +6,6 @@ import rospy
 import sensor_msgs.msg 
 # Interbotix/Trossen Packages
 from interbotix_xs_modules.arm import InterbotixManipulatorXS
-from interbotix_xs_modules.gripper import InterbotixGripperXS
 from interbotix_xs_msgs.srv import JointGroupCommand
 
 from gello.robots.robot import Robot
