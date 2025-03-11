@@ -19,4 +19,4 @@ python3 ./experiments/launch_nodes.py --robot=trossen &
 sleep 1 # Wait 1 second
 
 # Run the enviroment loop
-python3 ./experiments/run_env.py --agent=gello
+python3 ./experiments/run_env.py --agent=gello --robot_type=trossen

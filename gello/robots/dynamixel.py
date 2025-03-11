@@ -6,7 +6,7 @@ from gello.robots.robot import Robot
 
 
 class DynamixelRobot(Robot):
-    """A class representing a UR robot."""
+    """A class representing a Dynamixel robot."""
 
     def __init__(
         self,
@@ -16,7 +16,7 @@ class DynamixelRobot(Robot):
         real: bool = False,
         port: str = "/dev/ttyUSB0",
         baudrate: int = 57600,
-        gripper_config: Optional[Tuple[int, float, float]] = None,
+        gripper_config: Optional[Tuple[float, float]] = None,
         start_joints: Optional[np.ndarray] = None,
     ):
         from gello.dynamixel.driver import (
@@ -34,12 +34,12 @@ class DynamixelRobot(Robot):
             # joint_ids.append(gripper_config[0])
             # joint_offsets.append(0.0)
             # joint_signs.append(1)
-            joint_ids = tuple(joint_ids) + (gripper_config[0],)
-            joint_offsets = tuple(joint_offsets) + (0.0,)
-            joint_signs = tuple(joint_signs) + (1,)
+            joint_ids = tuple(joint_ids)
+            joint_offsets = tuple(joint_offsets)
+            joint_signs = tuple(joint_signs)
             self.gripper_open_close = (
+                gripper_config[0] * np.pi / 180,
                 gripper_config[1] * np.pi / 180,
-                gripper_config[2] * np.pi / 180,
             )
         else:
             self.gripper_open_close = None
@@ -112,6 +112,7 @@ class DynamixelRobot(Robot):
             g_pos = (pos[-1] - self.gripper_open_close[0]) / (
                 self.gripper_open_close[1] - self.gripper_open_close[0]
             )
+            print(g_pos)
             g_pos = min(max(0, g_pos), 1)
             pos[-1] = g_pos
 
@@ -125,9 +126,11 @@ class DynamixelRobot(Robot):
         return pos
 
     def command_joint_state(self, joint_state: np.ndarray) -> None:
-        self._driver.set_joints((joint_state + self._joint_offsets).tolist())
+        self._driver.set_joints((joint_state * self._joint_signs + self._joint_offsets).tolist())
 
     def set_torque_mode(self, enable: bool, ids: Optional[Sequence[int]] = None):
+        if ids is None:
+            ids = self._joint_ids # If no ids given, assume all motors are targeted
         self._driver.set_torque_mode(enable, ids)
         self._torque_enabled = self._driver.torque_enabled()
 

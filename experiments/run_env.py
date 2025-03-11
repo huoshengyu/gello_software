@@ -121,12 +121,23 @@ def main(args):
                         "No gello port found, please specify one or plug in gello"
                     )
             if args.start_joints is None:
-                reset_joints = np.deg2rad(
-                    [180, -90, 90, -90, -90, 0, 0]
-                )  # Change this to your own reset joints
+                print("Using default starting joint states for robot type: " + args.robot_type)
+                if args.robot_type == "ur":
+                    reset_joints = np.deg2rad(
+                        [180, -90, 90, -90, -90, 0, 0]
+                    )
+                elif args.robot_type == "trossen":
+                    reset_joints = np.deg2rad(
+                        [0, 0, 0, 0, 90, 0, 0]
+                    )
+                else:
+                    reset_joints = np.deg2rad(
+                        [180, -90, 90, -90, -90, 0, 0]
+                    )
+                print(reset_joints)
             else:
                 reset_joints = args.start_joints
-            agent = GelloAgent(port=gello_port, start_joints=args.start_joints)
+            agent = GelloAgent(port=gello_port, start_joints=args.start_joints, robot_type=args.robot_type)
             curr_joints = env.get_obs()["joint_positions"]
             if reset_joints.shape == curr_joints.shape:
                 max_delta = (np.abs(curr_joints - reset_joints)).max()
@@ -188,7 +199,7 @@ def main(args):
             joints
         ), f"agent output dim = {len(start_pos)}, but env dim = {len(joints)}"
 
-        # Move GELLO to start position
+        # Set GELLO start params
         start_move_time = 4.0 # seconds
         start_move_steps = int(start_move_time * env._rate.rate) # Get steps based on time allotted
         print(start_move_steps)
@@ -201,6 +212,7 @@ def main(args):
         max_joint_delta = max(np.abs(joint_delta).max(), 0.000001)
         delta_proportion_per_second = min(1.0, abs(delta_limit_per_second / max_joint_delta)) # Scale command to obey delta limit per step
         
+        # Move GELLO to start position
         print("Start GELLO move")
         start_time = datetime.datetime.now()
         while (datetime.datetime.now() - start_time).total_seconds() < start_move_time/2:
@@ -219,6 +231,8 @@ def main(args):
         print("Start Robot move")
         start_time = datetime.datetime.now()
         previous_step_time = datetime.datetime.now()
+        obs = env.get_obs()
+        current_joints = obs["joint_positions"]
         while (datetime.datetime.now() - start_time).total_seconds() < start_move_time/2:
             current_step_time = datetime.datetime.now()
             seconds_elapsed_this_step = (current_step_time - previous_step_time).total_seconds()
@@ -226,13 +240,13 @@ def main(args):
             delta_limit_this_step = delta_limit_per_second * seconds_elapsed_this_step
             obs = env.get_obs()
             command_joints = agent.act(obs, hold=True) # Command GELLO to hold position, use GELLO position as target
-            current_joints = obs["joint_positions"]
             command_joints = command_joints[0:len(current_joints)]
             delta = command_joints - current_joints
             max_joint_delta = np.abs(delta).max()
             if max_joint_delta > delta_limit_this_step:
                 delta = (delta / max_joint_delta) * delta_limit_this_step # Scale command to obey delta limit per step
             env.step(current_joints + delta) # Command follower robot to move with scaled command
+            current_joints = current_joints + delta # Update current joints to continue stepping closer to target
 
         end_time = datetime.datetime.now()
         elapsed_time = end_time - start_time
@@ -277,7 +291,7 @@ def main(args):
                 end="",
                 flush=True,
             )
-            action = agent.act(obs, require_grip=False)
+            action = agent.act(obs, require_grip=False) # Set to True to hold position. Currently doesn't work well due to weak Dynamixel motors.
             action = action[0:len(joints)]
             dt = datetime.datetime.now()
             if args.use_save_interface:
@@ -301,7 +315,7 @@ def main(args):
             obs = env.step(action)
     except Exception as e:
         print(e)
-        agent._robot.set_torque_mode(False)
+        agent._robot.set_torque_mode(False, agent._robot._joint_ids) # Turn off all GELLO controller motors
 
 
 if __name__ == "__main__":

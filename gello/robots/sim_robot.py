@@ -144,10 +144,11 @@ class MujocoRobotServer:
 
         assets: Dict[str, str] = {}
         for asset in arena.asset.all_children():
-            if asset.tag == "mesh":
+            # Load all assets with associated files, skip others
+            # Note this includes not only meshes, but also textures
+            if hasattr(asset, 'file'):
                 f = asset.file
-                assets[f.get_vfs_filename()] = asset.file.contents
-
+                assets[f.get_vfs_filename()] = f.contents
         xml_string = arena.to_xml_string()
         # save xml_string to file
         with open("arena.xml", "w") as f:

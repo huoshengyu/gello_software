@@ -36,8 +36,9 @@ def launch_robot_server(args: Args):
             Path(__file__).parent.parent / "third_party" / "mujoco_menagerie"
         )
         xml = MENAGERIE_ROOT / "trossen_vx300s" / "vx300s.xml"
+        gripper_xml = None
         server = MujocoRobotServer(
-            xml_path=xml, port=port, host=args.hostname
+            xml_path=xml, gripper_xml_path=gripper_xml, port=port, host=args.hostname
         )
         server.serve()
 
