@@ -44,6 +44,7 @@ class Args:
 
 
 def main(args):
+    # Start robot client, connect to robot port
     if args.mock:
         robot_client = PrintRobot(8, dont_print=True)
         camera_clients = {}
@@ -56,6 +57,7 @@ def main(args):
         robot_client = ZMQClientRobot(port=args.robot_port, host=args.hostname)
     env = RobotEnv(robot_client, control_rate_hz=args.hz, camera_dict=camera_clients)
 
+    # Handle bimanual agent/controller case
     if args.bimanual:
         if args.agent == "gello":
             # dynamixel control box port map (to distinguish left and right gello)
@@ -68,9 +70,7 @@ def main(args):
             from gello.agents.quest_agent import SingleArmQuestAgent
 
             left_agent = SingleArmQuestAgent(robot_type=args.robot_type, which_hand="l")
-            right_agent = SingleArmQuestAgent(
-                robot_type=args.robot_type, which_hand="r"
-            )
+            right_agent = SingleArmQuestAgent(robot_type=args.robot_type, which_hand="r")
             agent = BimanualAgent(left_agent, right_agent)
             # raise NotImplementedError
         elif args.agent == "spacemouse":
@@ -79,7 +79,10 @@ def main(args):
             left_path = "/dev/hidraw0"
             right_path = "/dev/hidraw1"
             left_agent = SpacemouseAgent(
-                robot_type=args.robot_type, device_path=left_path, verbose=args.verbose
+                robot_type=args.robot_type,
+                device_path=left_path,
+                verbose=args.verbose,
+                invert_button=False,
             )
             right_agent = SpacemouseAgent(
                 robot_type=args.robot_type,
@@ -102,6 +105,8 @@ def main(args):
 
         for jnt in np.linspace(curr_joints, reset_joints, steps):
             env.step(jnt)
+
+    # Handle single agent/controller case
     else:
         if args.agent == "gello":
             gello_port = args.gello_port
@@ -145,6 +150,8 @@ def main(args):
             raise NotImplementedError("add your imitation policy here if there is one")
         else:
             raise ValueError("Invalid agent name")
+        
+    # Start agent
     try:
         # Prepare to go to start position
         print("Going to start position")

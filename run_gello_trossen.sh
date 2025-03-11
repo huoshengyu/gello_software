@@ -14,7 +14,7 @@ function kill {
 trap kill EXIT
 
 # Launch all of the node
-python3 ./experiments/launch_nodes.py --robot=sim_trossen &
+python3 ./experiments/launch_nodes.py --robot=trossen &
 
 sleep 1 # Wait 1 second
 

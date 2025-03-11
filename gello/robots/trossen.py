@@ -120,11 +120,11 @@ class TrossenRobot(Robot):
 
 def main():
     robot_ip = "192.168.1.102"
-    gripper_type = "onrobot"
-    ur = URRobot(robot_ip, no_gripper=True, gripper_type=gripper_type)
-    print(ur)
-    ur.set_freedrive_mode(True)
-    print(ur.get_observations())
+    gripper_type = "trossen"
+    trossen = TrossenRobot(robot_ip, no_gripper=False, gripper_type=gripper_type)
+    print(trossen)
+    trossen.set_freedrive_mode(True)
+    print(trossen.get_observations())
 
 
 if __name__ == "__main__":
