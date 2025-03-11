@@ -1,6 +1,9 @@
 # keep each top level section alphabetical
 # keep each item within the sections alphabetical
 
+# arena.xml changes each time the robot is changed
+*arena.xml
+
 # large files
 *.png
 *.gif
