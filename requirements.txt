@@ -1,7 +1,5 @@
 # keep in alphabetical order
 dm_control
-interbotix_xs_modules
-interbotix_xs_msgs
 numpy-quaternion
 Pillow
 pygame
