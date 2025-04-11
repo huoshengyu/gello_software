@@ -1,5 +1,5 @@
-# GELLO: Morpheus Branch
-This is a branch of the GELLO robot arm controller, modified for the Morpheus haptic feedback project at UC Davis's HRVIP. See the original website for the paper and other resources for GELLO https://wuphilipp.github.io/gello_site/
+# GELLO: Morpheus
+This is a fork of the GELLO robot arm controller, modified for the Morpheus haptic feedback project at UC Davis's HRVIP. See the original website for the paper and other resources for GELLO https://wuphilipp.github.io/gello_site/
 See the GELLO hardware repo for the STL files and hardware instructions for building your own GELLO https://github.com/wuphilipp/gello_mechanical
 ```
 git clone https://github.com/wuphilipp/gello_software.git
