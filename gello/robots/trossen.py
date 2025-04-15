@@ -6,7 +6,6 @@ import rospy
 import sensor_msgs.msg 
 # Interbotix/Trossen Packages
 from interbotix_xs_modules.arm import InterbotixManipulatorXS
-from interbotix_xs_msgs.srv import JointGroupCommand
 
 from gello.robots.robot import Robot
 
@@ -14,19 +13,16 @@ from gello.robots.robot import Robot
 class TrossenRobot(Robot):
     """A class representing a Trossen robot."""
 
-    def __init__(self, robot_ip: str = "192.168.1.102", no_gripper: bool = False, gripper_type: str = "trossen"):
-        joint_state_topic = rospy.get_param("~joint_state_topic", "joint_states")
-        self.joint_state_topic = rospy.subscriber(joint_state_topic, sensor_msgs.msg.JointState, 1)
-        self.joint_state = None
+    def __init__(self, robot_model: str = "vx300s", no_gripper: bool = False, gripper_type: str = "trossen"):
 
-        [print("in trossen robot") for _ in range(4)]
+        [print("Launching Trossen %s..." % (robot_model))]
         self.robot = None
         while not self.robot:
             try:
                 if not no_gripper:
-                    self.robot = InterbotixManipulatorXS("vx300s", "arm", "gripper")
+                    self.robot = InterbotixManipulatorXS(robot_model, "arm", "gripper")
                 else:
-                    self.robot = InterbotixManipulatorXS("vx300s", "arm")
+                    self.robot = InterbotixManipulatorXS(robot_model, "arm")
             except Exception as e:
                 print(e)
                 print(robot_ip)
@@ -36,6 +32,12 @@ class TrossenRobot(Robot):
         self._free_drive = False
         # self.robot.endFreedriveMode()
         self._use_gripper = not no_gripper
+
+        self.velocity = 0.5
+        self.acceleration = 0.5
+        self.dt = 1.0 / 500  # 2ms
+        self.lookahead_time = 0.2
+        self.gain = 100
 
     def num_dofs(self) -> int:
         """Get the number of joints of the robot.
@@ -48,39 +50,47 @@ class TrossenRobot(Robot):
         return 6
 
     def _get_gripper_pos(self) -> float:
-        return self.joint_state.position[-1]
+        # Copied with edits from interbotix_xs_modules
+        # interbotix_ros_toolboxes/interbotix_xs_toolbox/interbotix_xs_modules/src/interbotix_xs_modules/gripper.py
+        with self.robot.gripper.core.js_mutex:
+            gripper_pos = self.robot.gripper.core.joint_states.position[self.robot.gripper.left_finger_index]
+        return gripper_pos
 
     def get_joint_state(self) -> np.ndarray:
-        """Get the current state of the leader robot.
+        """Get the current state of the follower robot.
 
         Returns:
-            T: The current state of the leader robot.
+            T: The current state of the follower robot.
         """
-        pos = self.joint_state[:self.num_dofs()]
+        # Copied with edits from interbotix_xs_modules
+        # interbotix_ros_toolboxes/interbotix_xs_toolbox/interbotix_xs_modules/src/interbotix_xs_modules/arm.py
+        robot_joints = [self.robot.arm.core.joint_states.position[self.robot.arm.core.js_index_map[name]] for name in self.robot.arm.group_info.joint_names]
+        if self._use_gripper:
+            gripper_pos = self._get_gripper_pos()
+            pos = np.append(robot_joints, gripper_pos)
+        else:
+            pos = robot_joints
         return np.array(pos)
 
     def command_joint_state(self, joint_state: np.ndarray) -> None:
-        """Command the leader robot to a given state.
+        """Command the follower robot to a given state.
 
         Args:
-            joint_state (np.ndarray): The state to command the leader robot to.
+            joint_state (np.ndarray): The state to command the follower robot to.
         """
-        velocity = 0.5
-        acceleration = 0.5
-        dt = 1.0 / 500  # 2ms
-        lookahead_time = 0.2
-        gain = 100
+        current_joint_state = self.get_joint_state()
+        moving_time = max(2, (max(joint_state - current_joint_state)) / self.velocity)
+        accel_time = min(moving_time / 2, max(0.3, moving_time / (self.acceleration * 4)))
 
         robot_joints = joint_state[:6]
-        t_start = self.robot.initPeriod()
-        self.robot.arm.set_joint_positions(robot_joints)
+        self.robot.arm.set_joint_positions(robot_joints, blocking=False)
         if self._use_gripper:
             gripper_pos = joint_state[-1]
             if gripper_pos < 0.6:
                 self.robot.gripper.close(2.0)
             else:
                 self.robot.gripper.open(2.0)
-        self.robot.waitPeriod(t_start)
+        rospy.sleep(self.dt)
 
     def freedrive_enabled(self) -> bool:
         """Check if the robot is in freedrive mode.
@@ -113,15 +123,12 @@ class TrossenRobot(Robot):
             "ee_pos_quat": pos_quat,
             "gripper_position": gripper_pos,
         }
-    
-    def joint_state_callback(self, msg):
-        self.joint_state = msg
 
 
 def main():
-    robot_ip = "192.168.1.102"
+    robot_model = "vx300s"
     gripper_type = "trossen"
-    trossen = TrossenRobot(robot_ip, no_gripper=False, gripper_type=gripper_type)
+    trossen = TrossenRobot(robot_model=robot_model, no_gripper=False, gripper_type=gripper_type)
     print(trossen)
     trossen.set_freedrive_mode(True)
     print(trossen.get_observations())

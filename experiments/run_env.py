@@ -9,7 +9,7 @@ import numpy as np
 import tyro
 
 from gello.agents.agent import BimanualAgent, DummyAgent
-from gello.agents.gello_agent import GelloAgent
+from gello.agents.gello_agent import GelloAgent, PORT_CONFIG_MAP, TYPE_CONFIG_MAP
 from gello.data_utils.format_obs import save_frame
 from gello.env import RobotEnv
 from gello.robots.robot import PrintRobot
@@ -115,6 +115,9 @@ def main(args):
                 print(f"Found {len(usb_ports)} ports")
                 if len(usb_ports) > 0:
                     gello_port = usb_ports[0]
+                    for port in usb_ports:
+                        if port in PORT_CONFIG_MAP:
+                            gello_port = port
                     print(f"using port {gello_port}")
                 else:
                     raise ValueError(
@@ -138,15 +141,6 @@ def main(args):
             else:
                 reset_joints = args.start_joints
             agent = GelloAgent(port=gello_port, start_joints=args.start_joints, robot_type=args.robot_type)
-            curr_joints = env.get_obs()["joint_positions"]
-            if reset_joints.shape == curr_joints.shape:
-                max_delta = (np.abs(curr_joints - reset_joints)).max()
-                steps = max(int(max_delta * 100), 100)
-
-                for jnt in np.linspace(curr_joints, reset_joints, steps):
-                    env.step(jnt)
-                    time.sleep(0.001)
-                time.sleep(0.5)
         elif args.agent == "quest":
             from gello.agents.quest_agent import SingleArmQuestAgent
 
@@ -164,15 +158,32 @@ def main(args):
         
     # Start agent
     try:
-        # Prepare to go to start position
-        print("Going to start position")
-        start_pos = agent.act(env.get_obs(), require_grip=False)
-        obs = env.get_obs()
-        joints = obs["joint_positions"]
-        start_pos = start_pos[0:len(joints)]
+        # Move robot to start position
+        print("Moving robot to start position")
+        robot_pos = env.get_obs()["joint_positions"]
+        if reset_joints.shape == robot_pos.shape:
+            max_delta = (np.abs(robot_pos - reset_joints)).max()
+            steps = max(int(max_delta * 100), 100)
+
+            for jnt in np.linspace(robot_pos, reset_joints, steps):
+                env.step(jnt)
+                time.sleep(0.001)
+            time.sleep(0.5)
+
+        # Prepare to move GELLO to start position
+        print("Moving GELLO to start position")
+        start_pos = reset_joints
+        gello_pos = agent.act(env.get_obs())
+        start_pos = start_pos[0:len(gello_pos)]
+
+        # Ensure start position and joint position have same dimensions
+        print(f"Start pos: {len(start_pos)}", f"Joints: {len(gello_pos)}")
+        assert len(start_pos) == len(
+            gello_pos
+        ), f"agent output dim = {len(start_pos)}, but env dim = {len(gello_pos)}"
 
         # Limit distance of controller from start position
-        abs_deltas = np.abs(start_pos[0:len(joints)] - joints)
+        abs_deltas = np.abs(start_pos - gello_pos)
         delta_limit = 0.8
         if (abs_deltas > delta_limit).any():
             print()
@@ -182,22 +193,16 @@ def main(args):
             id_mask = abs_deltas > delta_limit
             print()
             ids = np.arange(len(id_mask))[id_mask]
-            for i, delta, joint, current_j in zip(
+            for i, delta, start_j, current_j in zip(
                 ids,
                 abs_deltas[id_mask],
                 start_pos[id_mask],
-                joints[id_mask],
+                gello_pos[id_mask],
             ):
                 print(
-                    f"joint[{i}]: \t delta: {delta:4.3f} , leader: \t{joint:4.3f} , follower: \t{current_j:4.3f}"
+                    f"joint[{i}]: \t delta: {delta:4.3f} , leader: \t{current_j:4.3f} , startpos: \t{start_j:4.3f}"
                 )
             return
-
-        # Ensure start position and joint position have same dimensions
-        print(f"Start pos: {len(start_pos)}", f"Joints: {len(joints)}")
-        assert len(start_pos) == len(
-            joints
-        ), f"agent output dim = {len(start_pos)}, but env dim = {len(joints)}"
 
         # Set GELLO start params
         start_move_time = 4.0 # seconds
@@ -233,6 +238,7 @@ def main(args):
         previous_step_time = datetime.datetime.now()
         obs = env.get_obs()
         current_joints = obs["joint_positions"]
+        print(current_joints)
         while (datetime.datetime.now() - start_time).total_seconds() < start_move_time/2:
             current_step_time = datetime.datetime.now()
             seconds_elapsed_this_step = (current_step_time - previous_step_time).total_seconds()
@@ -258,11 +264,11 @@ def main(args):
         action = agent.act(obs)
         action = action[0:len(joints)]
 
-        # Limit distance of controller from new position (Post-move)
+        # Limit distance of controller from robot (Post-move)
         abs_deltas = np.abs(action - joints)
         delta_limit = 0.5
         if (abs_deltas > delta_limit).any():
-            print("Start position error is too big:")
+            print("Start position error between controller and robot is too big:")
 
             # Print which joint deltas are too big
             joint_index = np.where(abs_deltas > delta_limit)

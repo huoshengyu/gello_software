@@ -34,10 +34,10 @@ class PandaRobot(Robot):
         return 8
 
     def get_joint_state(self) -> np.ndarray:
-        """Get the current state of the leader robot.
+        """Get the current state of the follower robot.
 
         Returns:
-            T: The current state of the leader robot.
+            T: The current state of the follower robot.
         """
         robot_joints = self.robot.get_joint_positions()
         gripper_pos = self.gripper.get_state()
@@ -45,10 +45,10 @@ class PandaRobot(Robot):
         return pos
 
     def command_joint_state(self, joint_state: np.ndarray) -> None:
-        """Command the leader robot to a given state.
+        """Command the follower robot to a given state.
 
         Args:
-            joint_state (np.ndarray): The state to command the leader robot to.
+            joint_state (np.ndarray): The state to command the follower robot to.
         """
         import torch
 

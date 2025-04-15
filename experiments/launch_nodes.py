@@ -18,6 +18,7 @@ class Args:
 
 def launch_robot_server(args: Args):
     port = args.robot_port
+    print("Launching nodes with robot type %s" % (args.robot))
     if args.robot == "sim_ur":
         from gello.robots.sim_robot import MujocoRobotServer
         MENAGERIE_ROOT: Path = (

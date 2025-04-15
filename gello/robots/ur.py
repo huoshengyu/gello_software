@@ -21,7 +21,7 @@ class URRobot(Robot):
         import rtde_control
         import rtde_receive
 
-        [print("in ur robot") for _ in range(4)]
+        [print("Launching UR robot with %s gripper..." % (gripper_type))]
         self.robot = None
         while not self.robot:
             try:
@@ -90,10 +90,10 @@ class URRobot(Robot):
         return gripper_pos / 255 # Given as a proportion in range [0, 1]
 
     def get_joint_state(self) -> np.ndarray:
-        """Get the current state of the leader robot.
+        """Get the current state of the follower robot.
 
         Returns:
-            T: The current state of the leader robot.
+            T: The current state of the follower robot.
         """
         robot_joints = self.r_inter.getActualQ()
         if self._use_gripper:
@@ -104,10 +104,10 @@ class URRobot(Robot):
         return np.array(pos)
 
     def command_joint_state(self, joint_state: np.ndarray) -> None:
-        """Command the leader robot to a given state.
+        """Command the follower robot to a given state.
 
         Args:
-            joint_state (np.ndarray): The state to command the leader robot to.
+            joint_state (np.ndarray): The state to command the follower robot to.
         """
         # Joint commands
         robot_joints = joint_state[:6]

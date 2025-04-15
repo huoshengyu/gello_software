@@ -2,7 +2,7 @@
 # keep each item within the sections alphabetical
 
 # arena.xml changes each time the robot is changed
-*arena.xml
+arena.xml
 
 # large files
 *.png

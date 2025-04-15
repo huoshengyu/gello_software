@@ -13,6 +13,11 @@ function kill {
 }
 trap kill EXIT
 
+# Start the Trossen robot so GELLO can connect to it
+roslaunch morpheus_teleop trossen.launch robot_mode:=real control_mode:=none &
+
+sleep 1 & # Wait 1 seconds
+
 # Launch all of the node
 python3 ./experiments/launch_nodes.py --robot=trossen &
 
