@@ -79,11 +79,12 @@ class TrossenRobot(Robot):
             joint_state (np.ndarray): The state to command the follower robot to.
         """
         current_joint_state = self.get_joint_state()
-        moving_time = max(2, (max(joint_state - current_joint_state)) / self.velocity)
-        accel_time = min(moving_time / 2, max(0.3, moving_time / (self.acceleration * 4)))
+        max_dist = max(joint_state - current_joint_state) # Get max difference between current and target joint state
+        moving_time = max(0.2, max_dist / self.velocity) # Get moving time capped by target speed
+        accel_time = max(moving_time/2, max_dist / (self.acceleration * moving_time / 4)) # Get accel time capped by target accel
 
         robot_joints = joint_state[:6]
-        self.robot.arm.set_joint_positions(robot_joints, blocking=False)
+        self.robot.arm.set_joint_positions(robot_joints, moving_time=moving_time, accel_time=accel_time, blocking=False)
         if self._use_gripper:
             gripper_pos = joint_state[-1]
             if gripper_pos < 0.6:

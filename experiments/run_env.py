@@ -238,7 +238,6 @@ def main(args):
         previous_step_time = datetime.datetime.now()
         obs = env.get_obs()
         current_joints = obs["joint_positions"]
-        print(current_joints)
         while (datetime.datetime.now() - start_time).total_seconds() < start_move_time/2:
             current_step_time = datetime.datetime.now()
             seconds_elapsed_this_step = (current_step_time - previous_step_time).total_seconds()
@@ -274,7 +273,7 @@ def main(args):
             joint_index = np.where(abs_deltas > delta_limit)
             for j in joint_index:
                 print(
-                    f"Joint [{j}], leader: {action[j]}, follower: {joints[j]}, diff: {action[j] - joints[j]}"
+                    f"Joint [{j}]: \t delta: {action[j] - joints[j]} , leader: \t{action[j]} , follower: \t{joints[j]}"
                 )
             exit()
 
@@ -321,7 +320,8 @@ def main(args):
             obs = env.step(action)
     except Exception as e:
         print(e)
-        agent._robot.set_torque_mode(False, agent._robot._joint_ids) # Turn off all GELLO controller motors
+        # Turn off all GELLO controller motors
+        agent._robot.set_torque_mode(False, agent._robot._joint_ids)
 
 
 if __name__ == "__main__":
