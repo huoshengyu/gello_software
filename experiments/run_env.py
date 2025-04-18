@@ -318,9 +318,9 @@ def main(args):
                 else:
                     raise ValueError(f"Invalid state {state}")
             obs = env.step(action)
-    except Exception as e:
-        print(e)
+    except KeyboardInterrupt:
         # Turn off all GELLO controller motors
+        print("Shutting off GELLO motors")
         agent._robot.set_torque_mode(False, agent._robot._joint_ids)
 
 

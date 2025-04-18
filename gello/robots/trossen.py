@@ -25,7 +25,7 @@ class TrossenRobot(Robot):
                     self.robot = InterbotixManipulatorXS(robot_model, "arm")
             except Exception as e:
                 print(e)
-                print(robot_ip)
+                print(robot_model)
 
         [print("connect") for _ in range(4)]
 
@@ -35,9 +35,6 @@ class TrossenRobot(Robot):
 
         self.velocity = 0.5
         self.acceleration = 0.5
-        self.dt = 1.0 / 500  # 2ms
-        self.lookahead_time = 0.2
-        self.gain = 100
 
     def num_dofs(self) -> int:
         """Get the number of joints of the robot.
@@ -78,10 +75,8 @@ class TrossenRobot(Robot):
         Args:
             joint_state (np.ndarray): The state to command the follower robot to.
         """
-        current_joint_state = self.get_joint_state()
-        max_dist = max(joint_state - current_joint_state) # Get max difference between current and target joint state
-        moving_time = max(0.2, max_dist / self.velocity) # Get moving time capped by target speed
-        accel_time = max(moving_time/2, max_dist / (self.acceleration * moving_time / 4)) # Get accel time capped by target accel
+        moving_time = 0.2
+        accel_time = moving_time/2
 
         robot_joints = joint_state[:6]
         self.robot.arm.set_joint_positions(robot_joints, moving_time=moving_time, accel_time=accel_time, blocking=False)
@@ -91,7 +86,6 @@ class TrossenRobot(Robot):
                 self.robot.gripper.close(2.0)
             else:
                 self.robot.gripper.open(2.0)
-        rospy.sleep(self.dt)
 
     def freedrive_enabled(self) -> bool:
         """Check if the robot is in freedrive mode.

@@ -109,8 +109,19 @@ def launch_robot_server(args: Args):
                 f"Robot {args.robot} not implemented, choose one of: sim_ur, xarm, ur, bimanual_ur, none"
             )
         server = ZMQServerRobot(robot, port=port, host=args.hostname)
-        print(f"Starting robot server on port {port}")
-        server.serve()
+        try:
+            print(f"Starting robot server on port {port}")
+            server.serve()
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            # Return Trossen robot to sleep position
+            if args.robot_type == "trossen":
+                print("Sending Trossen robot to sleep pose")
+                try:
+                    env._robot.robot.arm.go_to_sleep_pose()
+                except Exception as e:
+                    print(e)
 
 
 def main(args):
