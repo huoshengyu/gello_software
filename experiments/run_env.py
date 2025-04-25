@@ -202,6 +202,7 @@ def main(args):
                 print(
                     f"joint[{i}]: \t delta: {delta:4.3f} , leader: \t{current_j:4.3f} , startpos: \t{start_j:4.3f}"
                 )
+            agent._robot.set_torque_mode(False, agent._robot._joint_ids)
             return
 
         # Set GELLO start params
@@ -275,7 +276,8 @@ def main(args):
                 print(
                     f"Joint [{j}]: \t delta: {action[j] - joints[j]} , leader: \t{action[j]} , follower: \t{joints[j]}"
                 )
-            exit()
+            agent._robot.set_torque_mode(False, agent._robot._joint_ids)
+            return
 
         if args.use_save_interface:
             from gello.data_utils.keyboard_interface import KBReset
