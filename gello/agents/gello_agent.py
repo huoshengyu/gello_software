@@ -129,8 +129,8 @@ TYPE_CONFIG_MAP: Dict[str, DynamixelRobotConfig] = {
     # HRVIP Trossen
     "trossen": DynamixelRobotConfig(
         joint_ids=[1, 2, 3, 4, 5, 6, 7],
-        joint_offsets=[2*np.pi/2, 1*np.pi/2, 3*np.pi/2, 1*np.pi/2, 2*np.pi/2, 1*np.pi/2, 0*np.pi/180 ],
-        joint_signs=[1, 1, -1, 1, -1, 1, 1],
+        joint_offsets=[2*np.pi/2, 3*np.pi/2, 3*np.pi/2, 2*np.pi/2, 0*np.pi/2, 2*np.pi/2, 0*np.pi/180 ],
+        joint_signs=[1, 1, -1, 1, 1, 1, 1],
         gripper_config=[18, -23],
     ),
 }
