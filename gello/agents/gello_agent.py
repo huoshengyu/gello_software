@@ -118,7 +118,7 @@ PORT_CONFIG_MAP: Dict[str, DynamixelRobotConfig] = {
     ),
     "/dev/serial/by-id/usb-FTDI_USB__-__Serial_Converter_FTA7NNQT-if00-port0": DynamixelRobotConfig(
         joint_ids=[1, 2, 3, 4, 5, 6, 7],
-        joint_offsets=[0*np.pi/2, 2*np.pi/2, 4*np.pi/2, 2*np.pi/2, 2*np.pi/2, 1*np.pi/2, 0.0 ],
+        joint_offsets=[0*np.pi/2, 3*np.pi/2, 3*np.pi/2, 5*np.pi/2, 3*np.pi/2, 4*np.pi/2, 0.0 ],
         joint_signs=[1, 1, -1, 1, 1, 1, 1],
         gripper_config=[18, -23],
     ),
@@ -154,16 +154,17 @@ class GelloAgent(Agent):
             self._robot = dynamixel_config.make_robot(
                 port=port, start_joints=start_joints
             )
-        elif robot_type: # True if robot_type is not empty
-            config = TYPE_CONFIG_MAP[robot_type]
-            self._robot = config.make_robot(
-                port=port, start_joints=start_joints
-            )
-        else:
+        elif port in PORT_CONFIG_MAP:
             assert os.path.exists(port), port
             assert port in PORT_CONFIG_MAP, f"Port {port} not in config map"
 
             config = PORT_CONFIG_MAP[port]
+            self._robot = config.make_robot(
+                port=port, start_joints=start_joints
+            )
+        else:
+            assert robot_type in TYPE_CONFIG_MAP
+            config = TYPE_CONFIG_MAP[robot_type]
             self._robot = config.make_robot(
                 port=port, start_joints=start_joints
             )
