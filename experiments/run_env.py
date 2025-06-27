@@ -125,13 +125,15 @@ def main(args):
                     )
             if args.start_joints is None:
                 print("Using default starting joint states for robot type: " + args.robot_type)
+                # UR5e arched home position
                 if args.robot_type == "ur":
                     reset_joints = np.deg2rad(
                         [180, -90, 90, -90, -90, 0, 0]
                     )
+                # Trossen sleep position, adjusted for GELLO sleep pose
                 elif args.robot_type == "trossen":
                     reset_joints = np.deg2rad(
-                        [0, 0, 0, 0, 90, 0, 0]
+                        [0, -97.559, 82.617, 0, 57.129, 0, 0]
                     )
                 else:
                     reset_joints = np.deg2rad(

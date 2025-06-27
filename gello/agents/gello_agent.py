@@ -112,9 +112,9 @@ PORT_CONFIG_MAP: Dict[str, DynamixelRobotConfig] = {
     ),
     "/dev/serial/by-id/usb-FTDI_USB__-__Serial_Converter_FTA2U2O1-if00-port0": DynamixelRobotConfig(
         joint_ids=[1, 2, 3, 4, 5, 6, 7],
-        joint_offsets=[0*np.pi/2, 2*np.pi/2, 4*np.pi/2, 2*np.pi/2, 2*np.pi/2, 1*np.pi/2, 0.0 ],
+        joint_offsets=[2*np.pi/2, 3*np.pi/2, 3*np.pi/2, 2*np.pi/2, 0*np.pi/2, 2*np.pi/2, 0.0 ],
         joint_signs=[1, 1, -1, 1, 1, 1, 1],
-        gripper_config=[18, -23],
+        gripper_config=[196, 148],
     ),
     "/dev/serial/by-id/usb-FTDI_USB__-__Serial_Converter_FTA7NNQT-if00-port0": DynamixelRobotConfig(
         joint_ids=[1, 2, 3, 4, 5, 6, 7],
@@ -176,6 +176,7 @@ class GelloAgent(Agent):
     def act(self, obs: Dict[str, np.ndarray], moveto=False, hold=False, require_grip=True, goal=np.empty(7)) -> np.ndarray:
         joint_state = self._robot.get_joint_state() # Get GELLO joint state
         gripper_state = joint_state[-1] # Get gripper closedness as a proportion [0,1]
+        print(gripper_state)
         try:
             if moveto: # (Be careful not to create a feedback loop between GELLO and follower robot)
                 self._robot.set_torque_mode(True, self._robot._joint_ids[:-1]) # Turn on the GELLO controller motors, not including gripper
