@@ -1,4 +1,6 @@
 import os
+import rospy
+from sensor_msgs.msg import JointState
 from dataclasses import dataclass
 from typing import Dict, Optional, Sequence, Tuple
 
@@ -148,7 +150,8 @@ class GelloAgent(Agent):
         port: str,
         dynamixel_config: Optional[DynamixelRobotConfig] = None,
         start_joints: Optional[np.ndarray] = None,
-        robot_type: Optional[str] = ""
+        robot_type: Optional[str] = "",
+        publish_joint_state: Optional[bool] = False
     ):
         if dynamixel_config is not None:
             self._robot = dynamixel_config.make_robot(
@@ -173,10 +176,15 @@ class GelloAgent(Agent):
         self.hold_state = None
         self.hold_state_saved = False
 
+        # Create a publisher for the GELLO's joint state
+        self.joint_pub = rospy.publisher("gello/joint_state", JointState, queue_size=10)
+
     def act(self, obs: Dict[str, np.ndarray], moveto=False, hold=False, require_grip=True, goal=np.empty(7)) -> np.ndarray:
         joint_state = self._robot.get_joint_state() # Get GELLO joint state
         gripper_state = joint_state[-1] # Get gripper closedness as a proportion [0,1]
-        print(gripper_state)
+        joint_msg = JointState()
+        joint_msg.position = joint_state
+        self.joint_pub.publish(joint_msg)
         try:
             if moveto: # (Be careful not to create a feedback loop between GELLO and follower robot)
                 self._robot.set_torque_mode(True, self._robot._joint_ids[:-1]) # Turn on the GELLO controller motors, not including gripper

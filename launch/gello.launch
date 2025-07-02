@@ -1,0 +1,7 @@
+<launch>
+    <arg name="robot"                   default="trossen"/>
+    <arg name="gripper"                 default=""/>
+
+    <node pkg="gello" name="gello" type="launch_env.py" output="screen"/>
+
+</launch>
