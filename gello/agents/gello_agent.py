@@ -157,7 +157,7 @@ class GelloAgent(Agent):
         dynamixel_config: Optional[DynamixelRobotConfig] = None,
         start_joints: Optional[np.ndarray] = None,
         robot_type: Optional[str] = "",
-        publish_joint_state: Optional[bool] = False
+        publish_joint_state: Optional[bool] = True
     ):
         if dynamixel_config is not None:
             self._robot = dynamixel_config.make_robot(
@@ -185,7 +185,7 @@ class GelloAgent(Agent):
         # Create a publisher for the GELLO's joint state
         self.joint_pub = None
         if publish_joint_state:
-            self.joint_pub = rospy.publisher("gello/joint_state", JointState, queue_size=10)
+            self.joint_pub = rospy.Publisher("gello/joint_state", JointState, queue_size=10)
 
     def act(self, obs: Dict[str, np.ndarray], moveto=False, hold=False, require_grip=True, goal=np.empty(7)) -> np.ndarray:
         joint_state = self._robot.get_joint_state() # Get GELLO joint state

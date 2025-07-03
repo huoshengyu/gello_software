@@ -1,6 +1,7 @@
 import datetime
 import glob
 import time
+import rospy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Tuple
@@ -160,6 +161,7 @@ def main(args):
         
     # Start agent
     try:
+        rospy.init_node('gello_node')
         # Move robot to start position
         print("Moving robot to start position")
         robot_pos = env.get_obs()["joint_positions"]
@@ -290,7 +292,7 @@ def main(args):
 
         save_path = None
         start_time = time.time()
-        while True:
+        while not rospy.is_shutdown():
             num = time.time() - start_time
             message = f"\rTime passed: {round(num, 2)}          "
             print_color(
@@ -322,6 +324,10 @@ def main(args):
                 else:
                     raise ValueError(f"Invalid state {state}")
             obs = env.step(action)
+            
+        # Turn off all GELLO controller motors
+        print("Shutting off GELLO motors")
+        agent._robot.set_torque_mode(False, agent._robot._joint_ids)
     except KeyboardInterrupt:
         # Turn off all GELLO controller motors
         print("Shutting off GELLO motors")
