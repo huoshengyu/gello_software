@@ -1,7 +1,12 @@
 <launch>
-    <arg name="robot"                   default="trossen"/>
-    <arg name="gripper"                 default=""/>
+    <arg name="robot"                   default="sim_trossen"/>
 
-    <node pkg="gello" name="gello" type="launch_env.py" output="screen"/>
+    <node pkg="gello" name="nodes" type="launch_nodes.py" output="screen">
+        <arg name="robot"               value="$(robot)"/>
+    </node>
+    <node pkg="gello" name="env" type="run_env.py" output="screen">
+        <arg name="robot_type"          value="$(robot)"/>
+        <arg name="agent"               value="gello"/>
+    </node>
 
 </launch>

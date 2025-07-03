@@ -75,17 +75,17 @@ class TrossenRobot(Robot):
         Args:
             joint_state (np.ndarray): The state to command the follower robot to.
         """
-        moving_time = 0.2
+        moving_time = 0.1
         accel_time = moving_time/2
+
+        delay = 0 # Blocking time for gripper commands
 
         robot_joints = joint_state[:6]
         self.robot.arm.set_joint_positions(robot_joints, moving_time=moving_time, accel_time=accel_time, blocking=False)
         if self._use_gripper:
-            gripper_pos = joint_state[-1]
-            if gripper_pos < 0.6:
-                self.robot.gripper.close(2.0)
-            else:
-                self.robot.gripper.open(2.0)
+            gripper_proportion = (max(joint_state[-1], 0.5) - 0.75) * 4 # State range [1, 0.5] maps to effort range [1, -1]
+            gripper_effort = gripper_proportion * self.robot.gripper.gripper_value # Scale no higher than target gripper pressure
+            self.robot.gripper.gripper_controller(gripper_effort, delay)
 
     def freedrive_enabled(self) -> bool:
         """Check if the robot is in freedrive mode.

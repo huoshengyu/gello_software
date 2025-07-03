@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import tyro
+import time
 
 from gello.robots.robot import BimanualRobot, PrintRobot
 from gello.zmq_core.robot_node import ZMQServerRobot
@@ -27,7 +28,7 @@ def launch_robot_server(args: Args):
         xml = MENAGERIE_ROOT / "universal_robots_ur5e" / "ur5e.xml"
         gripper_xml = MENAGERIE_ROOT / "robotiq_2f85" / "2f85.xml"
         server = MujocoRobotServer(
-            xml_path=xml, gripper_xml_path=gripper_xml, port=port, host=args.hostname
+            xml_path=xml, gripper_xml_path=gripper_xml, port=port, host=args.hostname, robot=args.robot
         )
         server.serve()
 
@@ -39,7 +40,7 @@ def launch_robot_server(args: Args):
         xml = MENAGERIE_ROOT / "trossen_vx300s" / "vx300s.xml"
         gripper_xml = None
         server = MujocoRobotServer(
-            xml_path=xml, gripper_xml_path=gripper_xml, port=port, host=args.hostname
+            xml_path=xml, gripper_xml_path=gripper_xml, port=port, host=args.hostname, robot=args.robot
         )
         server.serve()
 
@@ -51,7 +52,7 @@ def launch_robot_server(args: Args):
         xml = MENAGERIE_ROOT / "franka_emika_panda" / "panda.xml"
         gripper_xml = None
         server = MujocoRobotServer(
-            xml_path=xml, gripper_xml_path=gripper_xml, port=port, host=args.hostname
+            xml_path=xml, gripper_xml_path=gripper_xml, port=port, host=args.hostname, robot=args.robot
         )
         server.serve()
 
@@ -63,7 +64,7 @@ def launch_robot_server(args: Args):
         xml = MENAGERIE_ROOT / "ufactory_xarm7" / "xarm7.xml"
         gripper_xml = None
         server = MujocoRobotServer(
-            xml_path=xml, gripper_xml_path=gripper_xml, port=port, host=args.hostname
+            xml_path=xml, gripper_xml_path=gripper_xml, port=port, host=args.hostname, robot=args.robot
         )
         server.serve()
 
@@ -109,19 +110,8 @@ def launch_robot_server(args: Args):
                 f"Robot {args.robot} not implemented, choose one of: sim_ur, xarm, ur, bimanual_ur, none"
             )
         server = ZMQServerRobot(robot, port=port, host=args.hostname)
-        try:
-            print(f"Starting robot server on port {port}")
-            server.serve()
-            while True:
-                time.sleep(1)
-        except KeyboardInterrupt:
-            # Return Trossen robot to sleep position
-            if args.robot_type == "trossen":
-                print("Sending Trossen robot to sleep pose")
-                try:
-                    env._robot.robot.arm.go_to_sleep_pose()
-                except Exception as e:
-                    print(e)
+        print(f"Starting robot server on port {port}")
+        server.serve()
 
 
 def main(args):

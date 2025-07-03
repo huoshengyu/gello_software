@@ -138,6 +138,7 @@ class MujocoRobotServer:
         host: str = "127.0.0.1",
         port: int = 5556,
         print_joints: bool = False,
+        robot: str = "",
     ):
         self._has_gripper = gripper_xml_path is not None
         arena = build_scene(xml_path, gripper_xml_path)
@@ -167,6 +168,8 @@ class MujocoRobotServer:
 
         self._print_joints = print_joints
 
+        self._robot = robot
+
     def num_dofs(self) -> int:
         return self._num_joints
 
@@ -181,6 +184,10 @@ class MujocoRobotServer:
         if self._has_gripper:
             _joint_state = joint_state.copy()
             _joint_state[-1] = _joint_state[-1] * 255
+            self._joint_cmd = _joint_state
+        elif self._robot == "sim_trossen":
+            _joint_state = joint_state.copy()
+            _joint_state[-1] = _joint_state[-1] / 20
             self._joint_cmd = _joint_state
         else:
             self._joint_cmd = joint_state.copy()

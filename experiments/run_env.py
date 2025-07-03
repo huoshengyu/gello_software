@@ -185,7 +185,7 @@ def main(args):
         ), f"agent output dim = {len(start_pos)}, but env dim = {len(gello_pos)}"
 
         # Limit distance of controller from start position
-        abs_deltas = np.abs(start_pos - gello_pos)
+        abs_deltas = np.abs(start_pos - gello_pos)[:6]
         delta_limit = 0.8
         if (abs_deltas > delta_limit).any():
             print()
@@ -267,7 +267,7 @@ def main(args):
         action = action[0:len(joints)]
 
         # Limit distance of controller from robot (Post-move)
-        abs_deltas = np.abs(action - joints)
+        abs_deltas = np.abs(action - joints)[:6]
         delta_limit = 0.5
         if (abs_deltas > delta_limit).any():
             print("Start position error between controller and robot is too big:")
