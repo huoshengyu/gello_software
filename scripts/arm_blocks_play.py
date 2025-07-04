@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from dataclasses import dataclass
 
 import numpy as np

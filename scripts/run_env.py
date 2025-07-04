@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+
+import rospy
 import datetime
 import glob
 import time
@@ -335,4 +338,5 @@ def main(args):
 
 
 if __name__ == "__main__":
-    main(tyro.cli(Args))
+    args, unknown_args = tyro.cli(Args, return_unknown_args=True)
+    main(args)

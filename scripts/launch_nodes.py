@@ -1,6 +1,9 @@
+#!/usr/bin/env python
+
 from dataclasses import dataclass
 from pathlib import Path
 
+import rospy
 import tyro
 import time
 
@@ -15,6 +18,7 @@ class Args:
     hostname: str = "127.0.0.1"
     robot_ip: str = "192.168.1.102"
     no_gripper: bool = False
+    __name: str = ""
 
 
 def launch_robot_server(args: Args):
@@ -119,4 +123,5 @@ def main(args):
 
 
 if __name__ == "__main__":
-    main(tyro.cli(Args))
+    args, unknown_args = tyro.cli(Args, return_unknown_args=True)
+    main(args)

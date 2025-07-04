@@ -1,12 +1,24 @@
 <launch>
+    <arg name="robot_name"              default="vx300s"/>
     <arg name="robot"                   default="sim_trossen"/>
 
-    <node pkg="gello" name="nodes" type="launch_nodes.py" output="screen">
-        <arg name="robot"               value="$(robot)"/>
-    </node>
-    <node pkg="gello" name="env" type="run_env.py" output="screen">
-        <arg name="robot_type"          value="$(robot)"/>
-        <arg name="agent"               value="gello"/>
-    </node>
+    <node 
+        pkg="gello" 
+        name="gello_nodes" 
+        type="launch_nodes.py" 
+        output="screen" 
+        ns="$(arg robot_name)"
+        args="--robot=$(arg robot)"
+    />
+    
+    <node 
+        pkg="gello" 
+        name="gello_env" 
+        type="run_env.py" 
+        output="screen" 
+        ns="$(arg robot_name)"
+        args="--robot_type=$(arg robot)
+                --agent=gello"
+    />
 
 </launch>
