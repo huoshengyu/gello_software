@@ -74,6 +74,7 @@ class DynamixelRobot(Robot):
             self._driver.set_torque_mode(False)
         else:
             self._driver = FakeDynamixelDriver(joint_ids)
+            self._driver.set_torque_mode(False)
         self._torque_enabled = dict.fromkeys(self._joint_ids, False)
         self._last_pos = None
         self._alpha = 0.99
@@ -84,10 +85,10 @@ class DynamixelRobot(Robot):
             current_joints = self.get_joint_state()
             assert current_joints.shape == start_joints.shape
             if gripper_config is not None:
-                current_joints = current_joints[:-1]
-                start_joints = start_joints[:-1]
+                current_arm_joints = current_joints[:-1]
+                start__arm_joints = start_joints[:-1]
             for idx, (c_joint, s_joint, joint_offset) in enumerate(
-                zip(current_joints, start_joints, self._joint_offsets)
+                zip(current_arm_joints, start__arm_joints, self._joint_offsets)
             ):
                 new_joint_offsets.append(
                     np.pi
@@ -99,6 +100,12 @@ class DynamixelRobot(Robot):
             if gripper_config is not None:
                 new_joint_offsets.append(self._joint_offsets[-1])
             self._joint_offsets = np.array(new_joint_offsets)
+        
+            if not real:
+                # If fake, just set to have correct joint positions
+                # Bypasses torque on requirement. Compare to self.command_joint_state().
+                corrected_start_joints = (start_joints * self._joint_signs + self._joint_offsets).tolist()
+                self._driver._joint_angles = np.array(corrected_start_joints)
 
     def num_dofs(self) -> int:
         return len(self._joint_ids)

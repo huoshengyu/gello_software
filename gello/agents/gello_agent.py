@@ -32,13 +32,13 @@ class DynamixelRobotConfig:
         assert len(self.joint_ids) == len(self.joint_signs)
 
     def make_robot(
-        self, port: str = "/dev/ttyUSB0", start_joints: Optional[np.ndarray] = None, robot_type: Optional[str] = ""
+        self, port: str = "/dev/ttyUSB0", start_joints: Optional[np.ndarray] = None, real: Optional[bool] = True
     ) -> DynamixelRobot:
         return DynamixelRobot(
             joint_ids=self.joint_ids,
             joint_offsets=self.joint_offsets,
             joint_signs=self.joint_signs,
-            real=True,
+            real=real,
             port=port,
             gripper_config=self.gripper_config,
             start_joints=start_joints,
@@ -130,6 +130,12 @@ PORT_CONFIG_MAP: Dict[str, DynamixelRobotConfig] = {
         joint_signs=[1, 1, -1, 1, 1, 1, 1],
         gripper_config=[148, 196],
     ),
+    "fake_port": DynamixelRobotConfig(
+        joint_ids=[1, 2, 3, 4, 5, 6, 7],
+        joint_offsets=[4*np.pi/2, 2*np.pi/2, 2*np.pi/2, 3*np.pi/2, 1*np.pi/2, 1*np.pi/2, 0.0 ],
+        joint_signs=[1, 1, -1, 1, 1, 1, 1],
+        gripper_config=[148, 196],
+    ),
 }
 
 TYPE_CONFIG_MAP: Dict[str, DynamixelRobotConfig] = {
@@ -140,8 +146,21 @@ TYPE_CONFIG_MAP: Dict[str, DynamixelRobotConfig] = {
         joint_signs=[1, 1, -1, 1, 1, 1, 1],
         gripper_config=[18, -23],
     ),
+    "sim_ur": DynamixelRobotConfig(
+        joint_ids=[1, 2, 3, 4, 5, 6, 7],
+        joint_offsets=[0*np.pi/2, 2*np.pi/2, 4*np.pi/2, 2*np.pi/2, 2*np.pi/2, 1*np.pi/2, 0.0 ],
+        joint_signs=[1, 1, -1, 1, 1, 1, 1],
+        gripper_config=[18, -23],
+    ),
     # HRVIP Trossen
     "trossen": DynamixelRobotConfig(
+        joint_ids=[1, 2, 3, 4, 5, 6, 7],
+        joint_offsets=[2*np.pi/2, 3*np.pi/2, 3*np.pi/2, 2*np.pi/2, 0*np.pi/2, 2*np.pi/2, 0*np.pi/180 ],
+        joint_signs=[1, 1, -1, 1, 1, 1, 1],
+        gripper_config=[18, -23],
+    ),
+    # HRVIP Trossen
+    "sim_trossen": DynamixelRobotConfig(
         joint_ids=[1, 2, 3, 4, 5, 6, 7],
         joint_offsets=[2*np.pi/2, 3*np.pi/2, 3*np.pi/2, 2*np.pi/2, 0*np.pi/2, 2*np.pi/2, 0*np.pi/180 ],
         joint_signs=[1, 1, -1, 1, 1, 1, 1],

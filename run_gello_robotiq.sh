@@ -19,9 +19,9 @@ python3 ./scripts/tool_communication.py &
 sleep 1 # Wait 1 second
 
 # Launch all of the node
-python3 ./experiments/launch_nodes.py --robot=ur &
+python3 ./scripts/launch_nodes.py --robot=ur &
 
 sleep 1 # Wait 1 second
 
 # Run the enviroment loop
-python3 ./experiments/run_env.py --agent=gello --robot_type=ur
+python3 ./scripts/run_env.py --agent=gello --robot_type=ur

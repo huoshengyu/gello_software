@@ -14,6 +14,7 @@ import tyro
 
 from gello.agents.agent import BimanualAgent, DummyAgent
 from gello.agents.gello_agent import GelloAgent, PORT_CONFIG_MAP, TYPE_CONFIG_MAP
+from gello.agents.fake_gello_agent import FakeGelloAgent
 from gello.data_utils.format_obs import save_frame
 from gello.env import RobotEnv
 from gello.robots.robot import PrintRobot
@@ -130,12 +131,12 @@ def main(args):
             if args.start_joints is None:
                 print("Using default starting joint states for robot type: " + args.robot_type)
                 # UR5e arched home position
-                if args.robot_type == "ur":
+                if args.robot_type == "ur" or args.robot_type == "sim_ur":
                     reset_joints = np.deg2rad(
                         [180, -90, 90, -90, -90, 0, 0]
                     )
                 # Trossen sleep position, adjusted for GELLO sleep pose
-                elif args.robot_type == "trossen":
+                elif args.robot_type == "trossen" or args.robot_type == "sim_trossen":
                     reset_joints = np.deg2rad(
                         [0, -97.559, 82.617, 0, 57.129, 0, 0]
                     )
@@ -147,6 +148,31 @@ def main(args):
             else:
                 reset_joints = args.start_joints
             agent = GelloAgent(port=gello_port, start_joints=args.start_joints, robot_type=args.robot_type)
+        elif args.agent == "fake_gello":
+            gello_port = args.gello_port
+            if gello_port is None:
+                gello_port = "fake_port"
+            reset_joints = args.start_joints
+            if args.start_joints is None:
+                print("Using default starting joint states for robot type: " + args.robot_type)
+                # UR5e arched home position
+                if args.robot_type == "ur" or args.robot_type == "sim_ur":
+                    reset_joints = np.deg2rad(
+                        [180, -90, 90, -90, -90, 0, 0]
+                    )
+                # Trossen sleep position, adjusted for GELLO sleep pose
+                elif args.robot_type == "trossen" or args.robot_type == "sim_trossen":
+                    reset_joints = np.deg2rad(
+                        [0, -97.559, 82.617, 0, 57.129, 0, 0]
+                    )
+                else:
+                    reset_joints = np.deg2rad(
+                        [180, -90, 90, -90, -90, 0, 0]
+                    )
+                print(reset_joints)
+            else:
+                reset_joints = args.start_joints
+            agent = FakeGelloAgent(port=gello_port, start_joints=reset_joints, robot_type=args.robot_type)
         elif args.agent == "quest":
             from gello.agents.quest_agent import SingleArmQuestAgent
 
@@ -181,6 +207,7 @@ def main(args):
         print("Moving GELLO to start position")
         start_pos = reset_joints
         gello_pos = agent.act(env.get_obs())
+        print(gello_pos)
         start_pos = start_pos[0:len(gello_pos)]
 
         # Ensure start position and joint position have same dimensions
@@ -200,14 +227,9 @@ def main(args):
             id_mask = abs_deltas > delta_limit
             print()
             ids = np.arange(len(id_mask))[id_mask]
-            for i, delta, start_j, current_j in zip(
-                ids,
-                abs_deltas[id_mask],
-                start_pos[id_mask],
-                gello_pos[id_mask],
-            ):
+            for i in ids:
                 print(
-                    f"joint[{i}]: \t delta: {delta:4.3f} , leader: \t{current_j:4.3f} , startpos: \t{start_j:4.3f}"
+                    f"joint[{i}]: \t delta: {(gello_pos[i] - start_pos[i]):4.3f} , leader: \t{gello_pos[i]:4.3f} , startpos: \t{start_pos[i]:4.3f}"
                 )
             agent._robot.set_torque_mode(False, agent._robot._joint_ids)
             return

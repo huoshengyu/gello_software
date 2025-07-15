@@ -1,6 +1,8 @@
 <launch>
     <arg name="robot_name"              default="vx300s"/>
     <arg name="robot"                   default="sim_trossen"/>
+    <arg name="agent"                   default="gello"/>
+    <arg name="use_keyboard"            default="false"/>
 
     <node 
         pkg="gello" 
@@ -18,7 +20,17 @@
         output="screen" 
         ns="$(arg robot_name)"
         args="--robot_type=$(arg robot)
-                --agent=gello"
+                --agent=$(arg agent)"
+    />
+
+    <node if="$(arg use_keyboard)"
+        pkg="gello" 
+        name="key_to_gello" 
+        type="key_to_gello.py" 
+        output="screen" 
+        ns="$(arg robot_name)"
+        args="--robot_type=$(arg robot)
+                --agent=$(arg agent)"
     />
 
 </launch>
