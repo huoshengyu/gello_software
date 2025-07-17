@@ -19,6 +19,7 @@ class ZMQServerRobot:
     ):
         self._robot = robot
         self._context = zmq.Context()
+        self._context.setsockopt(zmq.LINGER, 100)  # Limit linger time to 100 ms
         self._socket = self._context.socket(zmq.REP)
         addr = f"tcp://{host}:{port}"
         debug_message = f"Robot Sever Binding to {addr}, Robot: {robot}"

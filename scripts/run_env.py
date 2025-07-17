@@ -147,12 +147,11 @@ def main(args):
                 print(reset_joints)
             else:
                 reset_joints = args.start_joints
-            agent = GelloAgent(port=gello_port, start_joints=args.start_joints, robot_type=args.robot_type)
+            agent = GelloAgent(port=gello_port, start_joints=reset_joints, robot_type=args.robot_type)
         elif args.agent == "fake_gello":
             gello_port = args.gello_port
             if gello_port is None:
                 gello_port = "fake_port"
-            reset_joints = args.start_joints
             if args.start_joints is None:
                 print("Using default starting joint states for robot type: " + args.robot_type)
                 # UR5e arched home position

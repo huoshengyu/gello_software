@@ -87,6 +87,7 @@ class ZMQRobotServer:
     def __init__(self, robot: Robot, host: str = "127.0.0.1", port: int = 5556):
         self._robot = robot
         self._context = zmq.Context()
+        self._context.setsockopt(zmq.LINGER, 100)  # Limit linger time to 100 ms
         self._socket = self._context.socket(zmq.REP)
         addr = f"tcp://{host}:{port}"
         self._socket.bind(addr)
@@ -95,6 +96,8 @@ class ZMQRobotServer:
     def serve(self) -> None:
         """Serve the robot state and commands over ZMQ."""
         self._socket.setsockopt(zmq.RCVTIMEO, 1000)  # Set timeout to 1000 ms
+        connected = False
+        timeout_count = 0
         while not self._stop_event.is_set():
             try:
                 message = self._socket.recv()
@@ -120,9 +123,18 @@ class ZMQRobotServer:
                     )
 
                 self._socket.send(pickle.dumps(result))
+
+                # If a send succeeds, connection is established and consecutive timeouts is 0
+                connected = True
+                timeout_count = 0
             except zmq.error.Again:
-                print("Timeout in ZMQLeaderServer serve")
-                # Timeout occurred, check if the stop event is set
+                if connected: # Wait until connection established before warning
+                    print("Timeout in ZMQLeaderServer serve")
+                    timeout_count = timeout_count + 1
+                    # Timeout occurred, check if the stop event is set
+                if timeout_count >= 3: # If send fails consecutively, exit
+                    print("ZMQLeaderServer serve lost connection, exiting...")
+                    self.stop()
 
     def stop(self) -> None:
         self._stop_event.set()
@@ -227,6 +239,7 @@ class MujocoRobotServer:
         # start the zmq server
         self._zmq_server_thread.start()
         with mujoco.viewer.launch_passive(self._model, self._data) as viewer:
+            viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = True
             while viewer.is_running():
                 step_start = time.time()
 
@@ -239,13 +252,6 @@ class MujocoRobotServer:
 
                 if self._print_joints:
                     print(self._joint_state)
-
-                # Example modification of a viewer option: toggle contact points every two seconds.
-                with viewer.lock():
-                    # TODO remove?
-                    viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = int(
-                        self._data.time % 2
-                    )
 
                 # Pick up changes to the physics state, apply perturbations, update options from GUI.
                 viewer.sync()

@@ -15,6 +15,7 @@ class ZMQClientCamera(CameraDriver):
 
     def __init__(self, port: int = DEFAULT_CAMERA_PORT, host: str = "127.0.0.1"):
         self._context = zmq.Context()
+        self._context.setsockopt(zmq.LINGER, 100)  # Limit linger time to 100 ms
         self._socket = self._context.socket(zmq.REQ)
         self._socket.connect(f"tcp://{host}:{port}")
 
