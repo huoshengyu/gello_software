@@ -21,7 +21,10 @@ class URRobot(Robot):
         import rtde_control
         import rtde_receive
 
-        [print("Launching UR robot with %s gripper..." % (gripper_type))]
+        if no_gripper:
+            [print("Launching UR robot with no gripper...")]
+        else:
+            [print("Launching UR robot with %s gripper..." % (gripper_type))]
         self.robot = None
         while not self.robot:
             try:

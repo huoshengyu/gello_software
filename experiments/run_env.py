@@ -206,10 +206,10 @@ def main(args):
             return
 
         # Set GELLO start params
-        start_move_time = 4.0 # seconds
+        start_move_time = 10.0 # seconds
         start_move_steps = int(start_move_time * env._rate.rate) # Get steps based on time allotted
         print(start_move_steps)
-        delta_limit_per_second = np.pi/8 # Desired max radians/sec
+        delta_limit_per_second = np.pi/4 # Desired max radians/sec
         obs = env.get_obs()
         start_joints = agent.act(obs) # Initialize array of GELLO joints
         command_joints = start_pos # Use start pos as target position for GELLO

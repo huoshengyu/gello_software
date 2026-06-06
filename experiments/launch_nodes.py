@@ -26,6 +26,8 @@ def launch_robot_server(args: Args):
         )
         xml = MENAGERIE_ROOT / "universal_robots_ur5e" / "ur5e.xml"
         gripper_xml = MENAGERIE_ROOT / "robotiq_2f85" / "2f85.xml"
+        if args.no_gripper:
+            gripper_xml = None
         server = MujocoRobotServer(
             xml_path=xml, gripper_xml_path=gripper_xml, port=port, host=args.hostname
         )
