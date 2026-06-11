@@ -120,12 +120,13 @@ class URRobot(Robot):
         )
         robot_joints_msg = std_msgs.msg.Float64MultiArray()
         robot_joints_msg.data = robot_joints
-        self._joint_pos_publisher.publish(robot_joints_msg)
+        # self._joint_pos_publisher.publish(robot_joints_msg)
 
         # Get difference between current and target gripper state
-        gripper_current_pos = self._get_gripper_pos()
-        gripper_target_pos = joint_state[-1]
-        gripper_delta_pos = gripper_target_pos - gripper_current_pos # Given as a proportion, [0,1]
+        if self._use_gripper:
+            gripper_current_pos = self._get_gripper_pos()
+            gripper_target_pos = joint_state[-1]
+            gripper_delta_pos = gripper_target_pos - gripper_current_pos # Given as a proportion, [0,1]
 
         # Gripper commands
         if self._use_gripper:

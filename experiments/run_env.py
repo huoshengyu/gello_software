@@ -1,6 +1,7 @@
 import datetime
 import glob
 import time
+import asyncio
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Tuple
@@ -221,12 +222,13 @@ def main(args):
         # Move GELLO to start position
         print("Start GELLO move")
         start_time = datetime.datetime.now()
+        count = 0
         while (datetime.datetime.now() - start_time).total_seconds() < start_move_time/2:
             obs = env.get_obs()
-            seconds_elapsed = (datetime.datetime.now() - start_time).total_seconds()
-            delta_proportion_total = min(1.0, abs(delta_proportion_per_second * seconds_elapsed)) # Find target progress toward final target position
+            delta_proportion_total = min(1.0, abs(delta_proportion_per_second * count / env._rate.rate)) # Find target progress toward final target position
             delta = joint_delta * delta_proportion_total # Find current target position
             action = agent.act(obs, moveto=True, goal=(start_joints + delta)) # Command GELLO to move with scaled command, get GELLO position for next loop
+            count = count + 1
             env._rate.sleep()
 
         end_time = datetime.datetime.now()
@@ -236,22 +238,17 @@ def main(args):
         # Move follower robot to GELLO while GELLO holds position
         print("Start Robot move")
         start_time = datetime.datetime.now()
-        previous_step_time = datetime.datetime.now()
         obs = env.get_obs()
         current_joints = obs["joint_positions"]
         while (datetime.datetime.now() - start_time).total_seconds() < start_move_time/2:
-            current_step_time = datetime.datetime.now()
-            seconds_elapsed_this_step = (current_step_time - previous_step_time).total_seconds()
-            previous_step_time = current_step_time
-            delta_limit_this_step = delta_limit_per_second * seconds_elapsed_this_step
-            obs = env.get_obs()
+            delta_limit_this_step = 2 * delta_limit_per_second / env._rate.rate
             command_joints = agent.act(obs, hold=True) # Command GELLO to hold position, use GELLO position as target
             command_joints = command_joints[0:len(current_joints)]
             delta = command_joints - current_joints
             max_joint_delta = np.abs(delta).max()
             if max_joint_delta > delta_limit_this_step:
                 delta = (delta / max_joint_delta) * delta_limit_this_step # Scale command to obey delta limit per step
-            env.step(current_joints + delta) # Command follower robot to move with scaled command
+            obs = env.step(current_joints + delta) # Command follower robot to move with scaled command
             current_joints = current_joints + delta # Update current joints to continue stepping closer to target
 
         end_time = datetime.datetime.now()
