@@ -50,22 +50,6 @@ PORT_CONFIG_MAP: Dict[str, DynamixelRobotConfig] = {
     # "/dev/serial/by-id/usb-FTDI_USB__-__Serial_Converter_FT3M9NVB-if00-port0": DynamixelRobotConfig(
     #     joint_ids=(1, 2, 3, 4, 5, 6, 7),
     #     joint_offsets=(
-    #         2 * np.pi / 2,
-    #         2 * np.pi / 2,
-    #         2 * np.pi / 2,
-    #         2 * np.pi / 2,
-    #         -1 * np.pi / 2 + 2 * np.pi,
-    #         1 * np.pi / 2,
-    #         1 * np.pi / 2,
-    #     ),
-    #     joint_signs=(1, 1, 1, 1, 1, 1, 1),
-    #     gripper_config=(8, 279, 279 - 50),
-    # ),
-    # panda
-    # "/dev/cu.usbserial-FT3M9NVB": DynamixelRobotConfig(
-    # "/dev/serial/by-id/usb-FTDI_USB__-__Serial_Converter_FT3M9NVB-if00-port0": DynamixelRobotConfig(
-    #     joint_ids=(1, 2, 3, 4, 5, 6, 7),
-    #     joint_offsets=(
     #         3 * np.pi / 2,
     #         2 * np.pi / 2,
     #         1 * np.pi / 2,
@@ -77,6 +61,24 @@ PORT_CONFIG_MAP: Dict[str, DynamixelRobotConfig] = {
     #     joint_signs=(1, -1, 1, 1, 1, -1, 1),
     #     gripper_config=(8, 195, 152),
     # ),
+    # yam
+    "/dev/serial/by-id/usb-FTDI_USB__-__Serial_Converter_FTA2U4GA-if00-port0": DynamixelRobotConfig(
+        joint_ids=(1, 2, 3, 4, 5, 6),
+        joint_offsets=[
+            0 * np.pi,
+            2 * np.pi / 2,
+            4 * np.pi / 2,
+            6 * np.pi / 6,
+            5 * np.pi / 3,
+            2 * np.pi / 2,
+        ],
+        joint_signs=(1, -1, -1, -1, 1, 1),
+        gripper_config=(
+            7,
+            -30,
+            24,
+        ),  # Reversed: now starts open (-30) and closes on press (24)
+    ),
     # # Left UR
     # "/dev/serial/by-id/usb-FTDI_USB__-__Serial_Converter_FT7WBEIA-if00-port0": DynamixelRobotConfig(
     #     joint_ids=(1, 2, 3, 4, 5, 6),
@@ -178,6 +180,9 @@ class GelloAgent(Agent):
         robot_type: Optional[str] = "",
         publish_joint_state: Optional[bool] = True
     ):
+        # Ensure start_joints is a numpy array if provided
+        if start_joints is not None and not isinstance(start_joints, np.ndarray):
+            start_joints = np.array(start_joints)
         if dynamixel_config is not None:
             self._robot = dynamixel_config.make_robot(
                 port=port, start_joints=start_joints

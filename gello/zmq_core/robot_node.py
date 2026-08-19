@@ -58,8 +58,8 @@ class ZMQServerRobot:
 
                 self._socket.send(pickle.dumps(result))
             except zmq.Again:
-                print(self._timout_message)
-                # Timeout occurred, check if the stop event is set
+                # Timeout occurred - don't spam the console
+                pass
 
     def stop(self) -> None:
         """Signal the server to stop serving."""
@@ -94,9 +94,14 @@ class ZMQClientRobot(Robot):
         """
         request = {"method": "get_joint_state"}
         send_message = pickle.dumps(request)
-        self._socket.send(send_message)
-        result = pickle.loads(self._socket.recv())
-        return result
+        try:
+            self._socket.send(send_message)
+            result = pickle.loads(self._socket.recv())
+            if isinstance(result, dict) and "error" in result:
+                raise RuntimeError(result["error"])
+            return result
+        except zmq.Again:
+            raise RuntimeError("ZMQ timeout - robot may be disconnected")
 
     def command_joint_state(self, joint_state: np.ndarray) -> None:
         """Command the leader robot to the given state.
@@ -121,6 +126,16 @@ class ZMQClientRobot(Robot):
         """
         request = {"method": "get_observations"}
         send_message = pickle.dumps(request)
-        self._socket.send(send_message)
-        result = pickle.loads(self._socket.recv())
-        return result
+        try:
+            self._socket.send(send_message)
+            result = pickle.loads(self._socket.recv())
+            if isinstance(result, dict) and "error" in result:
+                raise RuntimeError(result["error"])
+            return result
+        except zmq.Again:
+            raise RuntimeError("ZMQ timeout - robot may be disconnected")
+
+    def close(self) -> None:
+        """Close the ZMQ socket and context."""
+        self._socket.close()
+        self._context.term()

@@ -1,15 +1,19 @@
 # keep in alphabetical order
 dm_control
 numpy-quaternion
+omegaconf==2.3.0
 Pillow
+pin==3.7.0
 pygame
 pyspacemouse
 PyQt6
 pyquaternion
 pyrealsense2
+pyzmq
 pure-python-adb
 quaternion
 termcolor
+setuptools
 tyro
 ur-rtde
 xarm
