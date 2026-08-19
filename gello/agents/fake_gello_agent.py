@@ -1,5 +1,5 @@
 import os
-import rospy
+import rclpy
 from sensor_msgs.msg import JointState, Joy
 from dataclasses import dataclass
 from typing import Dict, Optional, Sequence, Tuple
@@ -37,14 +37,17 @@ class FakeGelloAgent(Agent):
         # Create a joint state which will be held when the GELLO is not engaged
         self.hold_state = None
         self.hold_state_saved = False
+        
+        rclpy.init()
+        self.node = rclpy.create_node('gello_agent_node')
 
         # Create a publisher for the GELLO's joint state
         self.joint_pub = None
         if publish_joint_state:
-            self.joint_pub = rospy.Publisher("gello/joint_state", JointState, queue_size=10)
-        
+            self.joint_pub = self.node.create_publisher(JointState, "gello/joint_state", 10)
+
         # Create a subscriber for the fake GELLO inputs
-        self.fake_gello_sub = rospy.Subscriber("gello/fake", Joy, self.fake_gello_callback)
+        self.fake_gello_sub = self.node.create_subscription(Joy, "gello/fake", self.fake_gello_callback, 10)
         # Maintain a joint command array so velocities can be maintained
         self.joint_command = np.zeros_like(self._robot.get_joint_state())
         # Maintain a joint gain array so velocities can be scaled

@@ -3,17 +3,14 @@
 import datetime
 import glob
 import time
-import rospy
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
 import numpy as np
 import tyro
 
-from gello.agents.agent import BimanualAgent, DummyAgent
 from gello.agents.gello_agent import GelloAgent, PORT_CONFIG_MAP, TYPE_CONFIG_MAP
 from gello.agents.fake_gello_agent import FakeGelloAgent
-from gello.data_utils.format_obs import save_frame
 from gello.env import RobotEnv
 from gello.robots.robot import PrintRobot
 from gello.utils.launch_utils import instantiate_from_dict
@@ -172,11 +169,15 @@ def main(args):
                 print(reset_joints)
             else:
                 reset_joints = np.array(args.start_joints)
-            agent = GelloAgent(port=gello_port, start_joints=reset_joints, robot_type=args.robot_type)
         elif args.agent == "fake_gello":
             gello_port = args.gello_port
             if gello_port is None:
                 gello_port = "fake_port"
+            agent_cfg = {
+                "_target_": "gello.agents.fake_gello_agent.FakeGelloAgent",
+                "port": gello_port,
+                "start_joints": args.start_joints,
+            }
             if args.start_joints is None:
                 print("Using default starting joint states for robot type: " + args.robot_type)
                 # UR5e arched home position
@@ -196,17 +197,6 @@ def main(args):
                 print(reset_joints)
             else:
                 reset_joints = np.array(args.start_joints)
-
-            curr_joints = env.get_obs()["joint_positions"]
-            if reset_joints.shape == curr_joints.shape:
-                max_delta = (np.abs(curr_joints - reset_joints)).max()
-                steps = min(int(max_delta / 0.01), 100)
-
-                for jnt in np.linspace(curr_joints, reset_joints, steps):
-                    env.step(jnt)
-                    time.sleep(0.001)
-                reset_joints = args.start_joints
-            agent = FakeGelloAgent(port=gello_port, start_joints=reset_joints, robot_type=args.robot_type)
         elif args.agent == "quest":
             agent_cfg = {
                 "_target_": "gello.agents.quest_agent.SingleArmQuestAgent",

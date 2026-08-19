@@ -3,9 +3,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-import rospy
 import tyro
-import time
 
 from gello.robots.robot import BimanualRobot, PrintRobot
 from gello.zmq_core.robot_node import ZMQServerRobot

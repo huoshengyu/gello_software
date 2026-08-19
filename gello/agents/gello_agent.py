@@ -1,5 +1,5 @@
 import os
-import rospy
+import rclpy
 from sensor_msgs.msg import JointState
 from dataclasses import dataclass
 from typing import Dict, Optional, Sequence, Tuple
@@ -209,7 +209,9 @@ class GelloAgent(Agent):
         # Create a publisher for the GELLO's joint state
         self.joint_pub = None
         if publish_joint_state:
-            self.joint_pub = rospy.Publisher("gello/joint_state", JointState, queue_size=10)
+            rclpy.init()
+            self.node = rclpy.create_node('gello_agent_node')
+            self.joint_pub = self.node.create_publisher(JointState, "gello/joint_state", 10)
 
     def act(self, obs: Dict[str, np.ndarray], moveto=False, hold=False, require_grip=True, goal=np.empty(7)) -> np.ndarray:
         joint_state = self._robot.get_joint_state() # Get GELLO joint state
