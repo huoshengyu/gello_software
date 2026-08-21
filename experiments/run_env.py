@@ -147,6 +147,7 @@ def main(args):
                     )
             agent_cfg = {
                 "_target_": "gello.agents.gello_agent.GelloAgent",
+                "robot_type": args.robot_type,
                 "port": gello_port,
                 "start_joints": args.start_joints,
             }

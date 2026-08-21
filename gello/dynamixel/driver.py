@@ -394,21 +394,21 @@ class DynamixelDriver(DynamixelDriverProtocol):
             self._torque_enabled = np.array(enable, dtype=bool)
             return
 
-        torque_value = TORQUE_ENABLE if enable else TORQUE_DISABLE
         with self._lock:
-            for dxl_id in self._ids:
-                if (self._torque_enabled[dxl_id] != enable):
-                    dxl_comm_result, dxl_error = self._packetHandler.write1ByteTxRx(
-                        self._portHandler, dxl_id, ADDR_TORQUE_ENABLE, torque_value
+            for dxl_id, dxl_enable in zip(self._ids, enable):
+                torque_value = TORQUE_ENABLE if dxl_enable else TORQUE_DISABLE
+
+                dxl_comm_result, dxl_error = self._packetHandler.write1ByteTxRx(
+                    self._portHandler, dxl_id, ADDR_TORQUE_ENABLE, torque_value
+                )
+                if dxl_comm_result != COMM_SUCCESS or dxl_error != 0:
+                    print(dxl_comm_result)
+                    print(dxl_error)
+                    raise RuntimeError(
+                        f"Failed to set torque mode for Dynamixel with ID {dxl_id}"
                     )
-                    if dxl_comm_result != COMM_SUCCESS or dxl_error != 0:
-                        print(dxl_comm_result)
-                        print(dxl_error)
-                        raise RuntimeError(
-                            f"Failed to set torque mode for Dynamixel with ID {dxl_id}"
-                        )
                         
-                self._torque_enabled[dxl_id] = enable
+                self._torque_enabled[dxl_id-1] = dxl_enable
 
     def set_operating_mode(self, mode: int):
         if self._is_fake:

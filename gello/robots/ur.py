@@ -3,13 +3,10 @@ from typing import Dict
 import numpy as np
 
 from gello.robots.robot import Robot
-from gello.robots.robotiq_gripper import RobotiqGripper
-from gello.robots.onrobot_gripper_ros import OnRobotRG2FTROS
 from onrobot_rg2ft_msgs.msg import RG2FTCommand, RG2FTState
 from robotiq_2f_gripper_control.msg import Robotiq2FGripper_robot_output, Robotiq2FGripper_robot_input
 
 # ROS compatibility edits
-import rospy
 import sensor_msgs.msg
 import trajectory_msgs.msg
 import std_msgs.msg
@@ -33,11 +30,13 @@ class URRobot(Robot):
         self.r_inter = rtde_receive.RTDEReceiveInterface(robot_ip)
         if not no_gripper:
             if gripper_type == "robotiq":
+                from gello.robots.robotiq_gripper import RobotiqGripper
 
                 self.gripper = RobotiqGripper()
                 self.gripper.connect(device="/tmp/ttyUR")
                 print("gripper connected")
             elif gripper_type == "onrobot":
+                from gello.robots.onrobot_gripper_ros import OnRobotRG2FTROS
 
                 onrobot_ip = "192.168.1.1"
                 onrobot_port = "502"
@@ -58,9 +57,6 @@ class URRobot(Robot):
 
         # joint_traj_topic = "/pos_joint_traj_controller/command"
         joint_pos_topic = "/joint_group_pos_controller/command"
-
-        # self._joint_traj_publisher = rospy.Publisher(joint_traj_topic, trajectory_msgs.msg.JointTrajectory, queue_size=1)
-        self._joint_pos_publisher = rospy.Publisher(joint_pos_topic, std_msgs.msg.Float64MultiArray, queue_size=1)
 
         self._joint_state = None
 
