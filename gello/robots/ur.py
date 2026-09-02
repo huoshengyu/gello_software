@@ -31,7 +31,7 @@ class URRobot(Robot):
                 from gello.robots.robotiq_gripper import RobotiqGripper
 
                 self.gripper = RobotiqGripper()
-                self.gripper.connect(device="/tmp/ttyUR")
+                self.gripper.connect(hostname=robot_ip, port=63352)
                 print("gripper connected")
             elif gripper_type == "onrobot":
                 from gello.robots.onrobot_gripper_ros import OnRobotRG2FTROS
@@ -109,21 +109,16 @@ class URRobot(Robot):
         self.robot.servoJ(
             robot_joints, self.velocity, self.acceleration, self.dt, self.lookahead_time, self.gain
         )
-        robot_joints_msg = std_msgs.msg.Float64MultiArray()
-        robot_joints_msg.data = robot_joints
-        self._joint_pos_publisher.publish(robot_joints_msg)
-
-        # Get difference between current and target gripper state
-        gripper_current_pos = self._get_gripper_pos()
-        gripper_target_pos = joint_state[-1] * 255
-        gripper_delta_pos = gripper_target_pos - gripper_current_pos # Given as a proportion, [0,1]
-
-        # Gripper commands
-        gripper_command_pos = gripper_target_pos
-        gripper_command_speed = min(128, abs(128 * (gripper_delta_pos/0.1)))
-        gripper_command_force = 20
         if self._use_gripper:
-            self.gripper.move(gripper_command_pos, gripper_command_speed, gripper_command_force)
+            # Get difference between current and target gripper state
+            gripper_current_pos = self._get_gripper_pos()
+            gripper_target_pos = joint_state[-1] * 255
+            gripper_delta_pos = gripper_target_pos - gripper_current_pos # Given as a proportion, [0,1]
+            # Gripper commands
+            gripper_command_pos = gripper_target_pos
+            gripper_command_speed = min(128, abs(128 * (gripper_delta_pos/0.1)))
+            gripper_command_force = 20
+            self.gripper.move(gripper_command_pos, 255, 10)
         self.robot.waitPeriod(t_start)
 
     def freedrive_enabled(self) -> bool:

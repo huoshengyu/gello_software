@@ -213,7 +213,7 @@ class GelloAgent(Agent):
             self.node = rclpy.create_node('gello_agent_node')
             self.joint_pub = self.node.create_publisher(JointState, "gello/joint_state", 10)
 
-    def act(self, obs: Dict[str, np.ndarray], moveto=False, hold=False, require_grip=True, goal=np.empty(7)) -> np.ndarray:
+    def act(self, obs: Dict[str, np.ndarray], moveto=False, hold=False, require_grip=False, goal=np.empty(7)) -> np.ndarray:
         joint_state = self._robot.get_joint_state() # Get GELLO joint state
         gripper_state = joint_state[-1] # Get gripper closedness as a proportion [0,1]
         joint_msg = JointState()
@@ -222,19 +222,19 @@ class GelloAgent(Agent):
             self.joint_pub.publish(joint_msg)
         try:
             if moveto: # (Be careful not to create a feedback loop between GELLO and follower robot)
-                self._robot.set_torque_mode(True, self._robot._joint_ids[:-1]) # Turn on the GELLO controller motors, not including gripper
+                self._robot.set_torque_mode(np.ones(len(self._robot._joint_ids[:-1]), dtype=bool) + np.array([False])) # Turn on the GELLO controller motors, not including gripper
                 self._robot.command_joint_state(goal) # Command GELLO to follower robot joint state
                 self.hold_state_saved = False # Be ready to save a new position next time hold is toggled on
             elif hold or (require_grip and gripper_state < 0.10): # If commanded to hold, or gripper less than 10% closed
                 if not self.hold_state_saved:
                     self.hold_state = joint_state # Save current position to be held
                     self.hold_state_saved = True # Don't repeat this until hold is toggled off and on again
-                self._robot.set_torque_mode(True, self._robot._joint_ids[:-1]) # Turn on the GELLO controller motors, not including gripper
+                self._robot.set_torque_mode(np.ones(len(self._robot._joint_ids[:-1]), dtype=bool) + np.array([False])) # Turn on the GELLO controller motors, not including gripper
                 self._robot.command_joint_state(self.hold_state) # Command GELLO to hold position
             else:
-                self._robot.set_torque_mode(False, self._robot._joint_ids) # Turn off all GELLO controller motors
+                self._robot.set_torque_mode(np.zeros(len(self._robot._joint_ids), dtype=bool)) # Turn off all GELLO controller motors
                 self.hold_state_saved = False # Be ready to save a new position next time hold is toggled on
         except Exception as e:
             print(e)
-            self._robot.set_torque_mode(False, self._robot._joint_ids) # Turn off all GELLO controller motors
+            self._robot.set_torque_mode(np.zeros(len(self._robot._joint_ids), dtype=bool)) # Turn off all GELLO controller motors
         return joint_state

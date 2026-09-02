@@ -263,7 +263,7 @@ def main(args):
                 print(
                     f"joint[{i}]: \t delta: {(gello_pos[i] - start_pos[i]):4.3f} , leader: \t{gello_pos[i]:4.3f} , startpos: \t{start_pos[i]:4.3f}"
                 )
-            agent._robot.set_torque_mode(False, agent._robot._joint_ids)
+            agent._robot.set_torque_mode(np.zeros(len(agent._robot._joint_ids), dtype=bool))
             return
 
         # Set GELLO start params
@@ -352,7 +352,7 @@ def main(args):
     except KeyboardInterrupt:
         # Turn off all GELLO controller motors
         print("Shutting off GELLO motors")
-        agent._robot.set_torque_mode(False, agent._robot._joint_ids)
+        agent._robot.set_torque_mode(np.zeros(len(agent._robot._joint_ids), dtype=bool))
 
 
 if __name__ == "__main__":
