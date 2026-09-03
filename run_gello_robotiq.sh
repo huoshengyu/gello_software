@@ -13,11 +13,6 @@ function kill {
 }
 trap kill EXIT
 
-# Allow the node to communicate with the Robotiq gripper
-python3 ./scripts/tool_communication.py &
-
-sleep 1 # Wait 1 second
-
 # Launch all of the node
 python3 ./experiments/launch_nodes.py --robot=ur &
 

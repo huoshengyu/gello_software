@@ -405,7 +405,7 @@ class DynamixelDriver(DynamixelDriverProtocol):
                     print(dxl_comm_result)
                     print(dxl_error)
                     raise RuntimeError(
-                        f"Failed to set torque mode for Dynamixel with ID {dxl_id}"
+                        f"Failed to set torque mode for Dynamixel with ID {dxl_id}. Are the motors powered on?"
                     )
                         
                 self._torque_enabled[dxl_id-1] = dxl_enable
@@ -420,7 +420,7 @@ class DynamixelDriver(DynamixelDriverProtocol):
                 )
                 if dxl_comm_result != COMM_SUCCESS or dxl_error != 0:
                     raise RuntimeError(
-                        f"Failed to set operating mode for Dynamixel with ID {dxl_id}"
+                        f"Failed to set operating mode for Dynamixel with ID {dxl_id}. Are the motors powered on?"
                     )
 
     def verify_operating_mode(self, expected_mode: int):
