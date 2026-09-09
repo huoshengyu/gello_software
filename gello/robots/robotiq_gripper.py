@@ -349,15 +349,17 @@ def main():
     # test open and closing the gripper
     gripper = RobotiqGripper()
     gripper.connect(hostname="192.168.1.102", port=63352)
-    # gripper.activate()
+    gripper.activate()
     print(gripper.get_current_position())
-    gripper.move(20, 255, 1)
+    gripper.move_and_wait_for_pos(20, 255, 1)
     time.sleep(0.2)
     print(gripper.get_current_position())
-    gripper.move(65, 255, 1)
+    gripper.move_and_wait_for_pos(130, 255, 1)
     time.sleep(0.2)
     print(gripper.get_current_position())
-    gripper.move(20, 255, 1)
+    gripper.move_and_wait_for_pos(20, 255, 1)
+    time.sleep(0.2)
+    print(gripper.get_current_position())
     gripper.disconnect()
 
 

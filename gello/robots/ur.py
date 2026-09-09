@@ -32,6 +32,7 @@ class URRobot(Robot):
 
                 self.gripper = RobotiqGripper()
                 self.gripper.connect(hostname=robot_ip, port=63352)
+                self.gripper.activate()
                 print("gripper connected")
             elif gripper_type == "onrobot":
                 from gello.robots.onrobot_gripper_ros import OnRobotRG2FTROS
@@ -112,13 +113,14 @@ class URRobot(Robot):
         if self._use_gripper:
             # Get difference between current and target gripper state
             gripper_current_pos = self._get_gripper_pos()
-            gripper_target_pos = joint_state[-1] * 255
-            gripper_delta_pos = gripper_target_pos - gripper_current_pos # Given as a proportion, [0,1]
+            gripper_target_pos = joint_state[-1]
+            gripper_delta_pos = gripper_target_pos - gripper_current_pos # Given as a proportion, [-1,1]
+            gripper_delta_factor = np.sin(np.clip(abs(gripper_delta_pos * 1.1) - 0.10, 0, 1) * np.pi/2)
             # Gripper commands
-            gripper_command_pos = gripper_target_pos
-            gripper_command_speed = min(128, abs(128 * (gripper_delta_pos/0.1)))
-            gripper_command_force = 20
-            self.gripper.move(gripper_command_pos, 255, 10)
+            gripper_command_pos = gripper_target_pos * 255
+            gripper_command_speed = min(0.9, gripper_delta_factor) * 255
+            gripper_command_force = 1
+            self.gripper.move(gripper_command_pos, gripper_command_speed, gripper_command_force)
         self.robot.waitPeriod(t_start)
 
     def freedrive_enabled(self) -> bool:
