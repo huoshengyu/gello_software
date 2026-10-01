@@ -35,11 +35,13 @@ class URRobot(Robot):
                 self.gripper.activate()
                 print("gripper connected")
             elif gripper_type == "onrobot":
-                from gello.robots.onrobot_gripper_ros import OnRobotRG2FTROS
+                from gello.robots.onrobot_gripper_tcp import OnRobotGripper
 
                 onrobot_ip = "192.168.1.1"
                 onrobot_port = "502"
-                self.gripper = OnRobotRG2FTROS()
+                self.gripper = OnRobotGripper()
+                self.gripper.connect(hostname=onrobot_ip, port=onrobot_port)
+                self.gripper.activate()
                 print("gripper connected")
 
             # gripper.activate()
